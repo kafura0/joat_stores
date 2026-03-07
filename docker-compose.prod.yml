@@ -1,0 +1,12 @@
+# docker-compose.prod.yml
+# Production overrides — Story 1.1b fills this with production-specific config.
+# Used as: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+version: "3.9"
+
+# TODO: Story 1.1b — add production overrides:
+#   - DJANGO_DEBUG=False
+#   - gunicorn command
+#   - Nginx SSL config
+#   - Named volumes for persistent data
+#   - Resource limits

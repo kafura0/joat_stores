@@ -447,6 +447,55 @@ A single Django + DRF backend resolves N independent storefronts and menus via d
 
 ---
 
+## Extended Functional Requirements (FR71–FR101)
+
+*Added post-elicitation based on confirmed product owner requirements: multi-country operations (Jamaica + Kenya), pre-arrival restaurant flow, contracting vertical, loyalty, and AI.*
+
+### Multi-Country + Multi-Provider Payments
+- **FR71:** `Store` model shall have `country` (ISO 3166-1 alpha-2), `currency` (ISO 4217), `timezone`, and `payment_methods[]` fields; these are set at provisioning and configurable by store owner
+- **FR72:** Payment service shall route to the correct provider based on `store.payment_methods` — `mpesa` → Daraja, `card` → Stripe or Flutterwave, `cash` → manual staff confirmation
+- **FR73:** Card payment via Stripe and Flutterwave shall be live (not a 501 scaffold) for stores with `card` in `payment_methods`; Jamaican stores default to card
+- **FR91:** Stripe integration shall have E2E sandbox tests with JMD-denominated amounts before Epic 2 acceptance; currency handling must be verified in CI
+
+### Restaurant Full-Service
+- **FR74:** Public menu URL `/{store_slug}/menu/` shall be accessible without QR scan or table session — shareable on WhatsApp, Instagram, anywhere
+- **FR75:** `PendingOrder` model shall store pre-arrival item selections linked to a customer phone number and 6-digit PIN; PIN delivered via SMS/WhatsApp
+- **FR76:** Customer shall be able to pre-order and pay in full before arriving; kitchen ticket shall fire only when waiter confirms seating on the waiter screen
+- **FR77:** `Reservation` model shall support time slot booking with party size; statuses: PENDING → CONFIRMED → SEATED → NO_SHOW; confirmation sent via WhatsApp/SMS
+- **FR78:** `TableSession.assigned_waiter` shall be a FK to staff; waiter name shall appear on kitchen ticket; waiter reassignment shall update the field without migrating order ownership
+- **FR92:** Waiter-facing order management screen shall allow pulling up a `PendingOrder` by phone number or PIN and one-tap converting it to a `DineInOrder` with table assignment
+- **FR94:** Public menu page shall pass Lighthouse CI performance gate: < 1.5s First Contentful Paint on simulated 3G (1.6 Mbps)
+- **FR101:** `PendingOrder.expires_at` = `created_at + 24 hours`; Celery Beat hourly purge task deletes unconverted expired orders
+
+### Contracting Vertical
+- **FR79:** `contracting` tenant type shall activate service catalogue, booking calendar, quote flow, job tracking, and invoice generation
+- **FR80:** `Service` model shall have: name, description, base_price, duration_estimate, category, and time slot availability calendar
+- **FR81:** `QuoteRequest → Quote → Job` workflow shall require explicit customer acceptance before job status advances; customer receives quote via WhatsApp/SMS link
+- **FR82:** `JobMilestone` model shall support completion photo upload; milestone status shall update to COMPLETED when photo is attached and staff confirms
+- **FR83:** `Invoice` shall be auto-generated from completed `Job` with store branding; settled via `initiate_payment()` (M-Pesa or card)
+- **FR97:** `Invoice` shall export as a branded PDF (store logo, line items, totals, validity, payment reference); PDF link shall be WhatsApp-shareable
+
+### Customer Loyalty + Engagement
+- **FR84:** `LoyaltyAccount` per customer per store shall track points balance and full transaction history; points awarded at configurable rate per order value
+- **FR85:** `StampCard` per customer shall have a configurable completion threshold; reward shall trigger automatically when threshold is reached
+- **FR86:** WhatsApp notification dispatch shall use Celery `engagement.notifications` queue; notifications sent for: order confirmed, reservation confirmed, job update, loyalty reward earned
+- **FR87:** Unified customer account shall allow a single login to view all orders, reservations, and jobs across all stores owned by the same platform operator
+- **FR93:** WhatsApp ordering bridge (Phase 2): bot shall create a `PendingOrder` from customer message and return a 6-digit PIN for waiter retrieval; model ready at MVP, bot layer deferred
+- **FR98:** "Powered by joat_stores" footer shall appear on all storefronts on Basic plan; togglable off on Growth/Pro; footer links to merchant signup (viral acquisition loop)
+
+### AI + Personalization
+- **FR88:** `RecommendationEngine` shall use `AIEvent` history to generate personalised menu item suggestions per customer; gated on `plan.features.has_ai`
+- **FR89:** Peak hour predictions derived from `HourlyOrderSummary` shall appear in merchant analytics as staffing suggestions; available on Growth+ plans
+- **FR90:** NLP menu search `GET /api/v1/restaurant/menu/search/?q=` shall accept natural language queries and return ranked `MenuItem` results; gated on `plan.features.has_ai`
+
+### Platform + Analytics
+- **FR95:** `DailyRevenueSummary` shall store both `amount_local` (store currency) and `amount_usd` (USD-normalised using daily exchange rate); platform GMV aggregation uses `amount_usd` only
+- **FR96:** Store admin PWA shall function offline for inventory count updates; changes queued and synced automatically when connection resumes
+- **FR99:** Data export shall be plan-gated: Basic gets summary CSV (30-day window), Growth gets full CSV (90-day), Pro/Enterprise gets raw JSON export (unlimited)
+- **FR100:** Merchant daily view shall show three numbers on one screen with zero navigation: today's order count, today's revenue, and count of pending actions (unconfirmed orders, low-stock alerts, unread messages)
+
+---
+
 ## Domain-Specific Requirements
 
 ### Compliance & Regulatory
@@ -786,6 +835,18 @@ This is not a "learning MVP" — it's a **proof-of-revenue MVP**. The 90-day bui
 | SaaS subscription scaffold | ✅ | Architecture for investor story |
 | AI engine placeholder | ✅ | Architecture for investor story |
 
+**Pulled into MVP (previously deferred — confirmed by product owner):**
+
+| Feature | Previously | Now | Reason |
+|---|---|---|---|
+| Multi-currency (KES + JMD + USD) | Phase 2 | ✅ MVP | Jamaican restaurant is a live merchant |
+| Card payments (Stripe + Flutterwave) | Phase 2 scaffold | ✅ MVP live | Jamaica has no M-Pesa |
+| Table reservations | Phase 2 | ✅ MVP | Pre-arrival booking is core to both restaurants |
+| WhatsApp notifications | Phase 2 | ✅ MVP | Primary customer communication channel |
+| Pre-arrival menu browsing + PendingOrder | Not planned | ✅ MVP | Key differentiator for both restaurant locations |
+| Contracting tenant type | Not planned | ✅ Epic 6 | Live contracting business requires it |
+| Customer loyalty (points + stamp card) | Not planned | ✅ Epic 10 | Repeat customer strategy confirmed |
+
 **Explicitly Deferred:**
 
 | Feature | Deferred To | Reason |
@@ -794,12 +855,10 @@ This is not a "learning MVP" — it's a **proof-of-revenue MVP**. The 90-day bui
 | Merchant self-service onboarding | Phase 2 | Manual admin onboarding acceptable < 5 merchants |
 | Advanced analytics (LTV, funnels) | Phase 2 | Basic metrics sufficient for validation |
 | Delivery zone management | Phase 2 | Flat fee acceptable at MVP |
-| Table reservations | Phase 2 | Walk-in dine-in sufficient |
-| Multi-currency | Phase 2 | KES only at MVP |
 | AI recommendations (live) | Phase 3 | Scaffold only at MVP |
 | Mobile app | Post-Series A | Mobile browser optimised |
 | POS integration | Phase 3 | Online-first at MVP |
-| WhatsApp notifications | Phase 2 | Email sufficient |
+| WhatsApp ordering bot (FR93) | Phase 2 | PendingOrder model ready; bot layer deferred |
 
 ---
 

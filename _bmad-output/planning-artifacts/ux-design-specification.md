@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2, 3]
+stepsCompleted: [1, 2, 3, 4, 5]
 inputDocuments:
   - _bmad-output/planning-artifacts/product-brief-joat_stores-2026-02-23.md
   - _bmad-output/planning-artifacts/prd.md
@@ -332,3 +332,390 @@ For Amara's dine-in group scenario — distinct from single-item modifier flow:
   review on the shared phone
 - Each line item shows who added it (customer-visible in the dine-in flow,
   not just the internal audit log)
+
+---
+
+## Desired Emotional Response
+
+### Primary Emotional Goals
+
+joat_stores operates across four distinct emotional contexts — each persona
+has a different primary emotional goal, but they all share a common arc:
+
+**Trust → Confidence → Relief → Satisfaction**
+
+This arc is the emotional spine of every joat_stores interaction. The product
+earns trust before asking for commitment. It builds confidence during the
+transaction. It delivers relief at the moment of confirmation. It leaves
+the user with lasting satisfaction that creates return behavior.
+
+| Persona | Primary Emotion | The Feeling | What Creates It |
+|---|---|---|---|
+| Daniel (retail) | **Relief** | "It worked. I didn't get scammed." | M-Pesa receipt card, two-stage confirmation, no silence |
+| Amara (restaurant/bar) | **Calm certainty** | "The kitchen has our order. We're sorted." | Full-screen kitchen confirmation, order status progression |
+| Store Manager | **Control** | "I know what's happening in my business." | Dashboard-first login, self-service recovery, real-time queue |
+| KAFURAHA (platform admin) | **Pride** | "This is mine. This works. Watch." | Go-live reveal, tenant health, first order milestone |
+
+### Emotional Journey Mapping
+
+**Daniel's journey — from WhatsApp link to receipt:**
+
+| Stage | Current Emotion | Target Emotion | Design Response |
+|---|---|---|---|
+| Arriving (from WhatsApp link) | Skepticism — "is this real?" | Cautious interest | Merchant brand + M-Pesa logo in first painted frame |
+| Browsing products | Tentative evaluation | Growing trust | Social proof, recognizable merchant identity |
+| Adding to cart (guest) | Hesitation — "will I need to register?" | Relief — "no signup required" | Guest checkout, no friction |
+| Checkout initiated | Anxiety building | Steady confidence | Clear progress steps, no hidden costs |
+| STK Push sent | Peak anxiety — "did it go through?" | Controlled waiting | Modal lock + cycling reassurances + merchant brand pulse |
+| Payment confirmed | Relief wave | Satisfaction + delight | M-Pesa receipt card, WhatsApp share, two-stage confirmation |
+| Post-purchase | Residual uncertainty | Settled confidence | Order number + "you'll receive an M-Pesa confirmation" note |
+| Returning next time | Neutral | Welcomed back | M-Pesa number recognized: "Welcome back. Last order: [items]" |
+
+**Amara's journey — from QR scan to settled bill:**
+
+| Stage | Target Emotion | Design Response |
+|---|---|---|
+| QR scan | Curiosity → instant delight | Branded menu loads fast, table confirmed visually |
+| Browsing menu | Appetite + pleasure | Food photography optimized for mobile, readable portions |
+| Split-variant ordering | Focus, not confusion | "How do you want these split?" surfaces naturally at quantity > 1 |
+| Order submission | Calm certainty | Full-screen 3-second confirmation visible to whole table |
+| Watching status | Positive anticipation | "Order received → Kitchen confirmed → Ready" progression |
+| Bill time | Ease, no awkwardness | Per-person itemization, individual M-Pesa pay buttons |
+
+**Store Manager's morning routine:**
+
+| Stage | Target Emotion | Design Response |
+|---|---|---|
+| Login | Anticipation (how did we do?) | Dashboard IS the landing — revenue answered in < 3s |
+| Revenue check | Reassurance or alert readiness | One number, one trend, one alert — not 12 charts |
+| Reviewing staff corrections | Control | Staff corrections count visible; review is one tap |
+| Handling a mistake | Empowerment | Self-service recovery flows; never needs IT help |
+| Kitchen display monitoring | Confidence | Real-time queue; offline state impossible to miss |
+
+**KAFURAHA's investor demo:**
+
+| Stage | Target Emotion | Design Response |
+|---|---|---|
+| Opening platform dashboard | Pride + readiness | Traffic-light tenant health, GMV visible at a glance |
+| Clicking a tenant | Confidence | Slide-out panel: last order, today's revenue, no navigation |
+| Starting merchant onboarding | Narrative excitement | Step-by-step flow that builds like a story |
+| "Go live" moment | Celebration + pride | Reveal animation, auto-navigate to new store URL |
+| First order notification | Vindication | "First order" milestone card highlighted in tenant view |
+
+### Micro-Emotions
+
+**Micro-emotions to cultivate:**
+
+- **Trust** (pre-transaction) — earned through merchant brand-first rendering,
+  M-Pesa familiarity signals, and social proof before product grids
+- **Confidence** (during transaction) — built through full-screen modal lock,
+  cycling reassurances, and the designed STK Push waiting state
+- **Relief** (post-payment) — delivered through the receipt card visual
+  language and two-stage "order placed → payment confirmed" sequence
+- **Control** (operator daily use) — created by dashboard-first navigation,
+  visible staff corrections, and priority-ranked kitchen queues
+- **Empowerment** (error recovery) — from self-service mistake correction
+  that never requires calling for help
+- **Pride** (platform admin) — from go-live reveals, first order milestones,
+  and an investor demo path designed to be narrated live
+- **Belonging** (repeat customers) — from M-Pesa number recognition and
+  "welcome back" moments without account registration
+
+**Micro-emotions to eliminate:**
+
+- **Anxiety about payment** — eliminated by the designed STK Push waiting
+  state; silence during payment is the product's most dangerous UX state
+- **Distrust of the platform** — eliminated by merchant-branding-first;
+  customers must never see "joat_stores" or feel they're on a generic platform
+- **Embarrassment** (operator) — eliminated by self-service recovery; no
+  operator should feel exposed by a staff mistake
+- **Overwhelm** (admin complexity) — eliminated by vertical-specific admin
+  views; a bar manager never sees restaurant tables
+- **Uncertainty during errors** — eliminated by the principle that every
+  system state is readable; ambiguous states are designed out
+
+### Design Implications
+
+**Relief (Daniel's primary goal):**
+→ Receipt card designed in M-Pesa visual language — green, transaction ID
+  large, screenshot-ready; the visual communicates "this is real proof"
+→ Two-stage confirmation matches Kenyan mental model (order first, receipt
+  second)
+→ "Check your M-Pesa messages" note anchors the experience to a trusted
+  external source the user already knows
+
+**Controlled confidence (STK Push anxiety management):**
+→ Full-screen modal lock makes the user feel held, not abandoned
+→ Cycling reassurances give the user something to read each second
+→ Merchant brand color in the pulse animation keeps the experience branded
+
+**Calm certainty (Amara's primary goal):**
+→ Full-screen kitchen confirmation designed to be seen by a whole table —
+  large text, 3-second hold, no dismissal required
+→ Order status progression creates positive anticipation, not anxious waiting
+→ Split-variant ordering handles group dynamics in one flow
+
+**Control (Store Manager):**
+→ Dashboard-first post-login — "is my business okay?" answered before
+  any navigation happens
+→ Staff corrections count on the morning screen
+→ Kitchen display reconnect banner — gap acknowledged, missed orders surfaced
+
+**Pride (KAFURAHA):**
+→ Go-live reveal moment: animation + auto-navigate to the new store URL
+→ Tenant health slide-out: investor question answered in 5 seconds
+→ First order milestone card: the moment marked, not just logged
+
+### Emotional Design Principles
+
+1. **Earn trust, then earn delight** — trust must be established before any
+   moment of delight. Animation and surprise in the checkout path reads as
+   "flashy scam" to a user who hasn't trusted the platform yet. Delight is
+   post-transaction.
+
+2. **Design for the anxiety peak, not the average state** — the STK Push
+   waiting state is the moment of maximum user anxiety in the entire product.
+   This is where the most design effort is concentrated.
+
+3. **Relief is a design deliverable** — "it worked" is not an accidental
+   outcome; it is designed through the receipt card visual language, the
+   two-stage confirmation, and the M-Pesa external anchor.
+
+4. **The operator's emotional safety is a product feature** — a store
+   manager who feels exposed by a staff mistake will not trust the platform.
+   Self-service recovery flows are emotional safety features, not convenience.
+
+5. **Celebrate the merchant's milestones as if they are your own** — the
+   go-live moment and the first order milestone are the most important
+   emotional moments in a merchant's digital commerce journey. The product
+   expresses this with reveal animations and milestone cards — not just
+   logs it in a database.
+
+---
+
+## UX Pattern Analysis & Inspiration
+
+### Inspiring Products Analysis
+
+Six products analyzed — chosen because their users overlap directly with
+joat_stores' personas.
+
+---
+
+**1. M-Pesa / Safaricom App**
+*Why it matters: Daniel uses it daily. It is the most trusted mobile
+interface in Kenya.*
+
+- **What it does brilliantly:** The full-screen PIN entry modal trains
+  users to expect a takeover interaction during payment — a learned behavior
+  joat_stores can leverage. The M-Pesa receipt SMS format (green, transaction
+  ID, amount, counterparty, timestamp) is the canonical Kenyan "proof of
+  payment" — burned into memory.
+- **Trust mechanism:** Safaricom brand recognition is the highest trust
+  signal in Kenyan mobile. Any payment UI that visually references M-Pesa
+  green and receipt conventions inherits that trust.
+- **Key pattern:** The 2–4 second silence between initiating payment and
+  receiving the PIN prompt is inherent to STK Push. Safaricom accepts this
+  silence. joat_stores must fill it — which Safaricom itself does not.
+
+---
+
+**2. WhatsApp**
+*Why it matters: Amara and Daniel live here. Kenyan commerce already
+happens in WhatsApp — joat_stores is the infrastructure layer underneath.*
+
+- **What it does brilliantly:** One-tap share. Location sharing via maps.
+  Photo as product catalog. The established Kenyan buyer flow: see product
+  screenshot in chat → "I want this" → share location → pay via M-Pesa →
+  photo of receipt.
+- **Key pattern:** Every joat_stores confirmation screen is a WhatsApp
+  message waiting to be composed. The confirmation is pre-formatted as:
+  "Order confirmed: [items]. Total: KES X. Ref: [M-Pesa #]. — [Store Name]"
+  — copyable with one tap.
+- **Key pattern:** "Share Location" button in delivery address — opens
+  native maps, not a text field. This is how Kenyan customers already do it.
+- **What to avoid:** WhatsApp's lack of structure (no order numbers, no
+  inventory management) is exactly what joat_stores replaces — don't
+  replicate its informality in the commerce layer.
+
+---
+
+**3. Bolt Kenya**
+*Why it matters: Real-time status during a high-anxiety "in-progress"
+transaction — the closest UX analogue to the STK Push waiting state.*
+
+- **What it does brilliantly:** "Booking confirmed → driver found → driver
+  arriving → arrived" status progression converts anxiety into positive
+  anticipation. Each state transition is a micro-reassurance.
+- **Key pattern (adapted):** The STK Push waiting state maps directly to
+  "booking confirmed, driver being assigned." joat_stores: "Payment sent →
+  Safaricom processing → ✅ Confirmed." Each transition visually distinct
+  and emotionally forward.
+- **Key pattern:** Bolt's failure recovery is fast and shame-free — the
+  error is the system's fault, not the user's. Same philosophy for M-Pesa
+  timeout recovery.
+- **What to avoid:** Bolt's surge pricing anxiety — the unexpected cost
+  change at checkout. joat_stores shows final totals before STK Push is
+  sent, never after.
+
+---
+
+**4. Jumia Kenya**
+*Why it matters: The established Kenyan e-commerce reference — what users
+compare joat_stores against.*
+
+- **What it does brilliantly:** Order status tracking ("packed → shipped →
+  delivered"), category navigation, cash-on-delivery trust signal.
+- **Key pattern:** Status progression as trust — "packed" and "shipped"
+  convert waiting into evidence of real activity. joat_stores restaurant
+  order status ("received → kitchen confirmed → ready") borrows this.
+- **What to avoid (critical):** Mandatory account creation before checkout.
+  Jumia's registration wall is the most cited friction point for first-time
+  Kenyan buyers. joat_stores guest checkout is a direct competitive response.
+- **What to avoid:** Jumia's page weight is punishing on 3G. joat_stores
+  storefront must be 10× lighter.
+
+---
+
+**5. Shopify Admin (Mobile)**
+*Why it matters: The gold standard merchant dashboard — what Store Manager
+and KAFURAHA intuitively compare against.*
+
+- **What it does brilliantly:** "Today at a glance" card on mobile —
+  revenue, orders, sessions in one card. Analytics as answers: "Sales are
+  up 12% vs last week" rather than raw numbers.
+- **Key pattern:** The "overview card" model — one summary card per domain
+  with a single headline number and trend indicator. Direct inspiration for
+  the Store Manager morning screen.
+- **Key pattern:** Low stock alert as an orange banner surfaced at the
+  top — urgency-appropriate, not buried in inventory settings.
+- **What to adapt:** Shopify mobile still assumes a decent device and WiFi.
+  joat_stores achieves the same density at 3G on a Tecno A-series —
+  fewer elements, larger text, aggressive data caching.
+- **What to avoid:** Shopify's onboarding is a checklist of tasks —
+  functional but not emotional. joat_stores' onboarding is a narrative
+  with a go-live reveal, not a checklist.
+
+---
+
+**6. Toast POS (Restaurant/Bar Operations)**
+*Why it matters: The closest operational UX reference for the kitchen
+display, table management, and bar tab.*
+
+- **What it does brilliantly:** Kitchen Display System (KDS) with ticket
+  priority by time elapsed — tickets go white → yellow → red as they age.
+  Table grid with color-coded status. Tab management with per-seat
+  itemization and split bill.
+- **Key pattern:** Time-based color escalation — joat_stores adapts as:
+  white (new order) → amber (additional order) → red (offline/aged).
+  Time elapsed visible on each ticket.
+- **Key pattern:** Table grid view where each tile shows occupancy and
+  order activity — Store Manager operational overview for restaurant vertical.
+- **What to adapt:** Toast is a native app on dedicated hardware. joat_stores
+  runs in Chrome on a wall-mounted Android tablet — touch targets must be
+  larger, offline state more aggressive (no native OS notification layer).
+
+### Transferable UX Patterns
+
+**Navigation Patterns:**
+
+- **Dashboard-first (Shopify)** — post-login landing is the operational
+  summary, not a navigation menu; adapted for joat_stores mobile admin
+  with three headline numbers (revenue / unresolved / staff corrections)
+- **Vertical-scoped navigation (Toast)** — a restaurant operator never
+  sees bar tab management; navigation scope set at the tenant's vertical
+- **Slide-out detail panel (modern SaaS)** — click tenant/table/order
+  to see detail without leaving the list; adopted for platform admin
+  tenant health and store manager order view
+
+**Interaction Patterns:**
+
+- **Status progression as trust (Bolt + Jumia)** — every "in progress"
+  state has at least 3 visible stages; users see forward movement, not
+  a spinner
+- **Full-screen modal for high-stakes actions (M-Pesa)** — payment
+  initiation and order confirmation warrant full-screen treatment; partial
+  modals feel insufficiently important for payment moments
+- **Time-based ticket escalation (Toast)** — kitchen tickets age visually;
+  color communicates urgency without requiring text to be read
+- **Soft cross-sell during wait** — one non-intrusive suggestion during
+  the STK Push wait; no button, awareness only; turns dead air into
+  discovery
+- **Split-variant quantity selector (joat_stores innovation)** — no
+  existing product handles "×4 with 2 different modifiers" group ordering
+  well; this is a genuine UX innovation opportunity
+
+**Visual Patterns:**
+
+- **Receipt card (M-Pesa)** — green accent, large transaction reference,
+  screenshot-ready; the "proof of payment" visual language users already
+  trust
+- **Traffic-light status (operations universal)** — green/amber/red for
+  tenant health, ticket age, alert severity; zero learning curve
+- **WhatsApp-optimized card layout** — product cards with 1:1 image ratio,
+  price prominent, name in 2 lines max; designed to look good as a
+  WhatsApp screenshot, not just in a browser
+- **"Last updated X seconds ago" timestamp (monitoring tools)** — data
+  freshness signal without requiring calculation; borrowed from ops
+  dashboards
+
+### Anti-Patterns to Avoid
+
+1. **Mandatory registration before checkout** — any account prompt before
+   first purchase loses the majority of Kenyan first-time digital buyers;
+   registration is a post-purchase optional offer, never a gate
+
+2. **Silent loading states** — blank screen or invisible spinner during
+   STK Push, page transition, or reconnect communicates failure on 3G;
+   every loading state has a visible, branded skeleton or progress indicator
+
+3. **Desktop-first admin shrunk to mobile** — horizontal data tables,
+   small buttons, and sidebar navigation do not work on a Tecno A-series;
+   mobile admin is designed mobile-first and expanded to desktop
+
+4. **Multi-page checkout with data re-entry** — address page → payment
+   page → confirm page is 3 pages too many; joat_stores checkout is a
+   single scrollable screen with M-Pesa number pre-filled for returning
+   customers
+
+5. **Western trust signals** — SSL padlock icons and "256-bit encryption"
+   badges mean nothing to Daniel; M-Pesa logo, merchant brand, and
+   social proof are the actual trust signals in this market
+
+6. **Technical error language** — "Error 502: Bad Gateway" creates panic;
+   all errors in plain Kenyan English: "Your payment didn't go through —
+   your money is safe. Try again or check your M-Pesa messages."
+
+7. **Silent kitchen display failures** — any display that continues showing
+   a frozen state without surfacing the outage is a kitchen liability;
+   offline state must be impossible to miss
+
+8. **Happy path-only design** — in a 3G market with M-Pesa timeouts, the
+   error path IS the product for a meaningful percentage of sessions
+
+### Design Inspiration Strategy
+
+**Adopt directly:**
+- M-Pesa receipt visual language → payment confirmation card design
+- Bolt's status progression → STK Push waiting state + order status
+- Shopify's "overview card" dashboard → Store Manager morning screen
+- Toast's time-based ticket escalation → kitchen display priority system
+- WhatsApp's "share location" → delivery address input
+
+**Adapt for joat_stores context:**
+- Jumia's order status tracking → 3-stage restaurant progression without
+  Jumia's page weight or registration wall
+- Shopify mobile admin → rebuilt for Tecno A-series at 3G; same
+  information hierarchy, 10× lighter
+- Toast's table grid → lightweight web component with larger touch targets
+  and more aggressive offline state than Toast's native approach
+- M-Pesa's STK Push silence → filled with designed waiting state
+  (cycling reassurances, modal lock, merchant brand pulse) — something
+  Safaricom itself doesn't provide
+
+**Avoid entirely:**
+- Jumia's mandatory registration gate
+- Western SSL/security badge trust signals
+- Desktop-first admin shrunk to mobile
+- Silent loading and error states
+- Multi-page checkout with separate address/payment/confirm pages

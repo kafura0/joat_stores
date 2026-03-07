@@ -1,0 +1,19 @@
+# docker-compose.yml
+# Stub — Story 1.1b replaces this with the full 9-service configuration.
+# DO NOT use this file for development until Story 1.1b is complete.
+#
+# Full services (Story 1.1b):
+#   - django     (port 8000)
+#   - postgres   (internal)
+#   - redis      (internal)
+#   - celery     (worker)
+#   - celerybeat (scheduler)
+#   - flower     (port 5555)
+#   - storefront (port 3000)
+#   - admin      (port 3001)
+#   - nginx      (port 80)
+
+version: "3.9"
+
+services:
+  # TODO: Story 1.1b — add full service definitions

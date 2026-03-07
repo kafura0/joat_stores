@@ -2,7 +2,22 @@
   "permissions": {
     "allow": [
       "Bash(cd:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(wc:*)",
+      "Bash(npm:*)",
+      "Bash(mkdir:*)",
+      "Bash(pip install:*)",
+      "Bash(cookiecutter:*)",
+      "Bash(python:*)",
+      "Bash(rm:*)",
+      "Bash(dir C:\\\\Users\\\\User\\\\Desktop\\\\joat_websites\\\\joat_stores:*)",
+      "Read(//c/Users/User/.cookiecutters/**)",
+      "Read(//c/Users/User/AppData/Local/**)",
+      "Read(//c/Users/User/**)",
+      "Bash(do:*)"
     ]
   }
 }
