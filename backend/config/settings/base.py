@@ -40,6 +40,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "drf_spectacular",
     "django_celery_beat",
@@ -198,6 +199,12 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "core.throttling.StorePlanRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "store_plan": None,  # dynamic — read from plan.api_rate_limit
+    },
     # StoreCursorPagination applied per viewset — Story 1.2
 }
 
@@ -210,11 +217,11 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
-    # store_id + role claims injected by custom token serializer — Story 1.5
+    "TOKEN_OBTAIN_SERIALIZER": "apps.users.serializers.StoreTokenObtainPairSerializer",
 }
 
 # ---------------------------------------------------------------------------
@@ -271,7 +278,7 @@ PLATFORM_SUBDOMAINS = env.list(
 # Request paths that bypass store resolution (health check, Django admin, schema)
 MIDDLEWARE_BYPASS_PATHS = env.list(
     "MIDDLEWARE_BYPASS_PATHS",
-    default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/api/v1/platform/", "/accounts/"],
+    default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/api/v1/platform/", "/api/v1/auth/", "/accounts/"],
 )
 
 # ---------------------------------------------------------------------------

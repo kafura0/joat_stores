@@ -248,7 +248,7 @@ Not just stores. Infrastructure.
 
 ## Project Development Progress
 
-> **Status:** Sprint 1 **in progress** — Epic 1 Stories 1.1–1.4 complete (6/9 stories done).
+> **Status:** Sprint 1 **in progress** — Epic 1 Stories 1.1–1.5 complete (7/9 stories done).
 
 ### Phase 0 — Planning & Architecture
 
@@ -306,7 +306,7 @@ Not just stores. Infrastructure.
 | 1.2 | Core Store model + TenantMiddleware | Done |
 | 1.3 | Tenant isolation layers (queryset, serializer, permissions, admin, pagination) | Done |
 | 1.4 | Atomic store provisioning API + SaaS stubs | Done |
-| 1.5 | JWT auth + RBAC (4 roles) | Backlog |
+| 1.5 | JWT auth + RBAC (4 roles) | Done |
 | 1.6 | PII audit log + OpenAPI schema | Backlog |
 | 1.7 | Storefront Next.js shell + tenant branding | Backlog |
 | 1.8 | Admin Next.js shell + authenticated layout | Backlog |
