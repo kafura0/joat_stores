@@ -45,12 +45,12 @@ development_status:
   # EPIC 1: Multi-Tenant Platform Foundation + Auth
   # =============================================================================
   epic-1: in-progress
-  1-1-monorepo-scaffold-app-bootstrapping: review
-  1-1b-docker-compose-all-services-celery-baseline: review
-  1-1c-minimal-ci-pipeline-linting-tests-on-pr: review
-  1-2-core-store-model-tenant-middleware: review
-  1-3-tenant-isolation-layers: review
-  1-4-atomic-store-provisioning-api: backlog
+  1-1-monorepo-scaffold-app-bootstrapping: done
+  1-1b-docker-compose-all-services-celery-baseline: done
+  1-1c-minimal-ci-pipeline-linting-tests-on-pr: done
+  1-2-core-store-model-tenant-middleware: done
+  1-3-tenant-isolation-layers: done
+  1-4-atomic-store-provisioning-api: review
   1-5-jwt-auth-rbac-4-roles: backlog
   1-6-pii-audit-log-openapi-schema: backlog
   1-7-storefront-nextjs-shell-tenant-branding: backlog

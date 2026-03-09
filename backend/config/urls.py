@@ -28,7 +28,7 @@ urlpatterns = [
         name="api-docs",
     ),
     # Domain app routes added per epic:
-    # path("api/v1/stores/", include("apps.store.urls")),      # Story 1.4
+    path("api/v1/platform/stores/", include("apps.store.urls")),  # Story 1.4
     # path("api/v1/auth/", include("apps.users.urls")),        # Story 1.5
     # path("api/v1/products/", include("apps.product.urls")),  # Epic 4
     # path("api/v1/orders/", include("apps.order.urls")),      # Epic 4

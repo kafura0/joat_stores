@@ -45,10 +45,13 @@ class User(AbstractUser):
         default=Role.CUSTOMER,
     )
 
-    # store FK added in Story 1.2 after Store model exists
-    # store = models.ForeignKey(
-    #     "store.Store", on_delete=models.CASCADE, null=True, blank=True
-    # )
+    store = models.ForeignKey(
+        "store.Store",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="users",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -56,8 +59,12 @@ class User(AbstractUser):
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
-        # Unique email per store — compound unique constraint added in Story 1.2
-        # UniqueConstraint(fields=["email", "store"], name="uq_user_email_store")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["email", "store"],
+                name="uq_user_email_store",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.email

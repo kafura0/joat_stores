@@ -1,0 +1,107 @@
+"""
+Platform admin views for store provisioning and management.
+
+These are NOT tenant-scoped (they don't use TenantViewSet) — they operate
+at the platform level with IsPlatformAdmin permission.
+
+Implementation: Story 1.4
+"""
+
+import logging
+
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.store.models import Store
+from apps.store.serializers import (
+    StoreDetailSerializer,
+    StoreProvisionSerializer,
+    StoreStatusSerializer,
+)
+from core.permissions import IsPlatformAdmin
+
+logger = logging.getLogger(__name__)
+
+
+class StoreProvisionView(generics.CreateAPIView):
+    """
+    POST /api/v1/platform/stores/
+
+    Atomically provisions a new store with subscription and owner.
+    """
+
+    permission_classes = [IsPlatformAdmin]
+    serializer_class = StoreProvisionSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        store = serializer.save()
+        detail = StoreDetailSerializer(store).data
+        return Response(
+            {"data": detail},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class StoreListView(generics.ListAPIView):
+    """
+    GET /api/v1/platform/stores/
+
+    Lists all stores. Platform admin only.
+    """
+
+    permission_classes = [IsPlatformAdmin]
+    serializer_class = StoreDetailSerializer
+    queryset = Store.objects.all().select_related("subscription")
+
+
+class StoreStatusUpdateView(APIView):
+    """
+    PATCH /api/v1/platform/stores/{id}/status/
+
+    Updates store status with transition validation.
+    Logs StoreStatusChanged event.
+    """
+
+    permission_classes = [IsPlatformAdmin]
+
+    def patch(self, request, pk):
+        try:
+            store = Store.objects.get(pk=pk)
+        except Store.DoesNotExist:
+            return Response(
+                {
+                    "errors": [
+                        {
+                            "field": None,
+                            "message": "Store not found.",
+                            "code": "NOT_FOUND",
+                        }
+                    ]
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = StoreStatusSerializer(
+            data=request.data,
+            context={"store": store},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        old_status = store.status
+        store.status = serializer.validated_data["status"]
+        store.save(update_fields=["status", "updated_at"])
+
+        logger.info(
+            "StoreStatusChanged",
+            extra={
+                "store_id": str(store.pk),
+                "old_status": old_status,
+                "new_status": store.status,
+            },
+        )
+
+        detail = StoreDetailSerializer(store).data
+        return Response({"data": detail})

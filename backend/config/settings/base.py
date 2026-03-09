@@ -271,7 +271,7 @@ PLATFORM_SUBDOMAINS = env.list(
 # Request paths that bypass store resolution (health check, Django admin, schema)
 MIDDLEWARE_BYPASS_PATHS = env.list(
     "MIDDLEWARE_BYPASS_PATHS",
-    default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/accounts/"],
+    default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/api/v1/platform/", "/accounts/"],
 )
 
 # ---------------------------------------------------------------------------
