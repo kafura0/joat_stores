@@ -8,6 +8,14 @@ class AIRecommendationsView(APIView):
 
     def get(self, request):
         return Response(
-            {"errors": [{"field": None, "message": "AI recommendations not yet available.", "code": "NOT_IMPLEMENTED"}]},
+            {
+                "errors": [
+                    {
+                        "field": None,
+                        "message": "AI recommendations not yet available.",
+                        "code": "NOT_IMPLEMENTED",
+                    }
+                ]
+            },
             status=status.HTTP_501_NOT_IMPLEMENTED,
         )

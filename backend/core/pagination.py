@@ -18,4 +18,5 @@ Default page size: 20. Max: 100.
 
 Implementation: Story 1.3
 """
+
 # TODO: Story 1.3 — implement StoreCursorPagination

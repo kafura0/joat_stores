@@ -11,4 +11,5 @@ All domain viewsets MUST extend TenantViewSet — never ModelViewSet directly.
 
 Implementation: Story 1.3
 """
+
 # TODO: Story 1.3 — implement TenantViewSet

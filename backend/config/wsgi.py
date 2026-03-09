@@ -2,6 +2,7 @@
 WSGI config for joat_stores project.
 Exposes the WSGI callable as a module-level variable named ``application``.
 """
+
 import os
 
 from django.core.wsgi import get_wsgi_application

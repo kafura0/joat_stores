@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+exclude = '''
+/(
+    migrations
+  | \.git
+  | \.venv
+  | venv
+  | staticfiles
+  | media
+)/
+'''
+
+[tool.isort]
+profile = "black"
+known_django = ["django"]
+known_first_party = ["apps", "core", "config"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+skip = ["migrations"]
+skip_glob = [".venv/*", "venv/*"]

@@ -4,6 +4,7 @@ Celery configuration for joat_stores.
 payments.reconciliation, analytics.reports.
 DLQ config: Story 1.1b.
 """
+
 import os
 
 from celery import Celery

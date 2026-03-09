@@ -1,12 +1,79 @@
-# docker-compose.prod.yml
-# Production overrides — Story 1.1b fills this with production-specific config.
-# Used as: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# docker-compose.prod.yml — Production overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 version: "3.9"
 
-# TODO: Story 1.1b — add production overrides:
-#   - DJANGO_DEBUG=False
-#   - gunicorn command
-#   - Nginx SSL config
-#   - Named volumes for persistent data
-#   - Resource limits
+services:
+
+  django:
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 60 --access-logfile - --error-logfile -
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  celery:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  celerybeat:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  flower:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  postgres:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  redis:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  storefront:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  admin:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"  # SSL — certs mounted in Story 12.1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M

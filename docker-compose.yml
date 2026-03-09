@@ -1,19 +1,159 @@
-# docker-compose.yml
-# Stub — Story 1.1b replaces this with the full 9-service configuration.
-# DO NOT use this file for development until Story 1.1b is complete.
-#
-# Full services (Story 1.1b):
-#   - django     (port 8000)
-#   - postgres   (internal)
-#   - redis      (internal)
-#   - celery     (worker)
-#   - celerybeat (scheduler)
-#   - flower     (port 5555)
-#   - storefront (port 3000)
-#   - admin      (port 3001)
-#   - nginx      (port 80)
-
 version: "3.9"
 
+networks:
+  joat_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_files:
+  static_files:
+
 services:
-  # TODO: Story 1.1b — add full service definitions
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: joat_stores
+      POSTGRES_USER: joat_stores
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - joat_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U joat_stores"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: on-failure
+
+  redis:
+    image: redis:8.6-alpine
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    networks:
+      - joat_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: on-failure
+
+  django:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+    volumes:
+      - ./backend:/app
+      - media_files:/app/media
+      - static_files:/app/staticfiles
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - joat_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A config.celery_app worker -l info -Q order.notifications,inventory.alerts,billing.reminders,payments.reconciliation,analytics.reports --concurrency=2
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+    volumes:
+      - ./backend:/app
+    depends_on:
+      django:
+        condition: service_healthy
+    networks:
+      - joat_network
+    restart: on-failure
+
+  celerybeat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A config.celery_app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+    volumes:
+      - ./backend:/app
+    depends_on:
+      django:
+        condition: service_healthy
+    networks:
+      - joat_network
+    restart: on-failure
+
+  flower:
+    image: mher/flower:2.0.1
+    command: celery -A config.celery_app flower --port=5555
+    env_file: .env
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery
+    networks:
+      - joat_network
+    restart: on-failure
+
+  storefront:
+    build:
+      context: ./storefront
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost/api/v1
+    ports:
+      - "3000:3000"
+    networks:
+      - joat_network
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost/api/v1
+    ports:
+      - "3001:3000"
+    networks:
+      - joat_network
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_files:/app/staticfiles:ro
+      - media_files:/app/media:ro
+    depends_on:
+      - django
+      - storefront
+      - admin
+    networks:
+      - joat_network
+    restart: on-failure

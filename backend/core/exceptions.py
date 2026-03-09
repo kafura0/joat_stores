@@ -17,10 +17,12 @@ Handles:
 
 Implementation: Story 1.6
 """
+
 # TODO: Story 1.6 — implement custom_exception_handler
 
 
 def custom_exception_handler(exc, context):
     """Placeholder. Story 1.6 implements the full normalised error envelope."""
     from rest_framework.views import exception_handler
+
     return exception_handler(exc, context)

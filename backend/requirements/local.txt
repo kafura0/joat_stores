@@ -6,3 +6,8 @@ factory-boy==3.*
 pytest-cov==6.*
 django-debug-toolbar==4.*
 # mailpit — local email testing (run via docker compose)
+
+# Linting + formatting (also used in CI)
+flake8==7.*
+black==24.*
+isort==5.*

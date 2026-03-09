@@ -4,6 +4,7 @@ All settings shared across environments live here.
 Environment-specific overrides: local.py (dev), production.py (prod).
 NEVER add a settings.py — always use the split: base / local / production.
 """
+
 from pathlib import Path
 
 import environ
@@ -27,6 +28,7 @@ DJANGO_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.admin",
+    "django.contrib.postgres",  # ArrayField for Store.payment_methods
     "django.forms",
 ]
 
@@ -72,14 +74,14 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # Resolves request.store from domain / X-Store-ID before any view logic
+    "core.middleware.TenantMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
-    # TenantMiddleware — Story 1.2
-    # "core.middleware.TenantMiddleware",
 ]
 
 # ---------------------------------------------------------------------------
@@ -128,11 +130,12 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
+_PWV = "django.contrib.auth.password_validation"
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": f"{_PWV}.UserAttributeSimilarityValidator"},
+    {"NAME": f"{_PWV}.MinimumLengthValidator"},
+    {"NAME": f"{_PWV}.CommonPasswordValidator"},
+    {"NAME": f"{_PWV}.NumericPasswordValidator"},
 ]
 
 # ---------------------------------------------------------------------------
@@ -237,7 +240,18 @@ CELERY_TASK_TIME_LIMIT = 5 * 60  # 5 minutes hard limit
 CELERY_TASK_SOFT_TIME_LIMIT = 60  # 60 seconds soft limit
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
-# Named queues — DLQ config in Story 1.1b
+# Named queues
+from kombu import Queue  # noqa: E402
+
+CELERY_TASK_QUEUES = (
+    Queue("order.notifications"),
+    Queue("inventory.alerts"),
+    Queue("billing.reminders"),
+    Queue("payments.reconciliation"),
+    Queue("analytics.reports"),
+)
+CELERY_TASK_DEFAULT_QUEUE = "order.notifications"
+
 CELERY_TASK_ROUTES = {
     "apps.order.*": {"queue": "order.notifications"},
     "apps.inventory.*": {"queue": "inventory.alerts"},
@@ -245,6 +259,20 @@ CELERY_TASK_ROUTES = {
     "apps.payment.*": {"queue": "payments.reconciliation"},
     "apps.analytics.*": {"queue": "analytics.reports"},
 }
+
+# ---------------------------------------------------------------------------
+# Multi-Tenancy (TenantMiddleware)
+# ---------------------------------------------------------------------------
+# Hosts that bypass store resolution entirely (platform-level subdomains)
+PLATFORM_SUBDOMAINS = env.list(
+    "PLATFORM_SUBDOMAINS",
+    default=["admin.joat.com", "api.joat.com", "localhost", "127.0.0.1"],
+)
+# Request paths that bypass store resolution (health check, Django admin, schema)
+MIDDLEWARE_BYPASS_PATHS = env.list(
+    "MIDDLEWARE_BYPASS_PATHS",
+    default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/accounts/"],
+)
 
 # ---------------------------------------------------------------------------
 # CORS

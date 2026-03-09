@@ -17,7 +17,15 @@
       "Read(//c/Users/User/.cookiecutters/**)",
       "Read(//c/Users/User/AppData/Local/**)",
       "Read(//c/Users/User/**)",
-      "Bash(do:*)"
+      "Bash(do:*)",
+      "Bash(chmod +x:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(bash:*)",
+      "Bash(DATABASE_URL=\"postgres://x\" REDIS_URL=\"redis://x\" SECRET_KEY=\"test-secret-key-that-is-long-enough-to-pass-validation\" DARAJA_CONSUMER_KEY=\"test\" DARAJA_CONSUMER_SECRET=\"test\" bash:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(echo EXISTS:$?:*)"
     ]
   }
 }

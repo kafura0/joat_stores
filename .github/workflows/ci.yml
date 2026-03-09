@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Python linting (flake8 + black + isort)
+  # ---------------------------------------------------------------------------
+  lint-backend:
+    name: Lint Backend (flake8 / black / isort)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+          cache-dependency-path: backend/requirements/local.txt
+
+      - name: Install Python deps
+        run: pip install -r backend/requirements/local.txt
+
+      - name: flake8
+        run: flake8 backend/
+
+      - name: black --check
+        run: black --check backend/
+
+      - name: isort --check
+        run: isort --check-only backend/
+
+  # ---------------------------------------------------------------------------
+  # Job 2: TypeScript strict compilation (storefront + admin)
+  # ---------------------------------------------------------------------------
+  typecheck-frontend:
+    name: TypeScript Check (storefront / admin)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: |
+            storefront/package-lock.json
+            admin/package-lock.json
+
+      - name: tsc — storefront
+        working-directory: storefront
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+      - name: tsc — admin
+        working-directory: admin
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Django test suite (pytest)
+  # ---------------------------------------------------------------------------
+  test-backend:
+    name: Test Backend (pytest)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: joat_stores
+          POSTGRES_USER: joat_stores
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:8.6-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+          cache-dependency-path: backend/requirements/local.txt
+
+      - name: Install Python deps
+        run: pip install -r backend/requirements/local.txt
+
+      - name: Run pytest
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.local
+          DATABASE_URL: postgres://joat_stores:password@localhost:5432/joat_stores
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_BROKER_URL: redis://localhost:6379/1
+          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          SECRET_KEY: ci-placeholder-secret-key-not-used-in-production
+        run: pytest

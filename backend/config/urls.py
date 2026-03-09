@@ -2,17 +2,31 @@
 URL configuration for joat_stores.
 API routes added per epic. All routes prefixed /api/v1/.
 """
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
+
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+
+def health_check(request):
+    """Minimal health check — no DB query, no auth."""
+    return JsonResponse({"status": "ok"})
+
+
 urlpatterns = [
+    path("health/", health_check, name="health"),
     path("admin/", admin.site.urls),
     # OpenAPI schema — Story 1.6
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="api-schema"),
-    path("api/v1/docs/", SpectacularSwaggerView.as_view(url_name="api-schema"), name="api-docs"),
+    path(
+        "api/v1/docs/",
+        SpectacularSwaggerView.as_view(url_name="api-schema"),
+        name="api-docs",
+    ),
     # Domain app routes added per epic:
     # path("api/v1/stores/", include("apps.store.urls")),      # Story 1.4
     # path("api/v1/auth/", include("apps.users.urls")),        # Story 1.5
@@ -33,4 +47,5 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     if "debug_toolbar" in settings.INSTALLED_APPS:
         import debug_toolbar
+
         urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns

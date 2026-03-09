@@ -7,6 +7,7 @@ User records with different store_id. Platform admins have store_id = None.
 Story 1.5 adds JWT auth with store_id + role claims.
 Story 1.4 adds the Store FK constraint.
 """
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -35,7 +36,8 @@ class User(AbstractUser):
 
     # Email as username (no separate username field)
     username = None  # type: ignore[assignment]
-    email = models.EmailField(_("email address"), unique=False)  # unique per store, not globally
+    # unique per store, not globally — compound constraint added in Story 1.2
+    email = models.EmailField(_("email address"), unique=False)
 
     role = models.CharField(
         max_length=20,
@@ -44,7 +46,9 @@ class User(AbstractUser):
     )
 
     # store FK added in Story 1.2 after Store model exists
-    # store = models.ForeignKey("store.Store", on_delete=models.CASCADE, null=True, blank=True)
+    # store = models.ForeignKey(
+    #     "store.Store", on_delete=models.CASCADE, null=True, blank=True
+    # )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

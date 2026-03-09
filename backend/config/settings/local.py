@@ -2,6 +2,7 @@
 Local development settings.
 DJANGO_SETTINGS_MODULE=config.settings.local
 """
+
 from .base import *  # noqa: F401, F403
 from .base import env
 
@@ -11,7 +12,7 @@ from .base import env
 DEBUG = True
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
-    default="!!!SET-DJANGO-SECRET-KEY-IN-DOT-ENV!!!change-me-in-dot-env-at-least-50-chars-long",
+    default="!!!SET-DJANGO-SECRET-KEY-IN-DOT-ENV!!!change-me-in-dot-env",
 )
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
@@ -53,7 +54,9 @@ EMAIL_USE_TLS = False
 # Debug toolbar
 # ---------------------------------------------------------------------------
 INSTALLED_APPS = INSTALLED_APPS + ["debug_toolbar"]  # noqa: F405
-MIDDLEWARE = ["debug_toolbar.middleware.DebugToolbarMiddleware"] + MIDDLEWARE  # noqa: F405
+MIDDLEWARE = [  # noqa: F405
+    "debug_toolbar.middleware.DebugToolbarMiddleware"
+] + MIDDLEWARE  # noqa: F405
 INTERNAL_IPS = ["127.0.0.1"]
 
 # ---------------------------------------------------------------------------

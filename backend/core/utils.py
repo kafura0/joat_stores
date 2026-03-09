@@ -15,5 +15,6 @@ mask_pii(value: str) -> str
 
 Implementation: Story 1.2 (normalise_mpesa_phone), Story 1.6 (mask_pii)
 """
+
 # TODO: Story 1.2 — implement normalise_mpesa_phone
 # TODO: Story 1.6 — implement mask_pii, format_currency

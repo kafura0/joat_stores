@@ -11,4 +11,5 @@ RULE: Every view must use at least one of these — never use
 
 Implementation: Story 1.5
 """
+
 # TODO: Story 1.5 — implement all permission classes

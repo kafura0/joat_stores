@@ -3,6 +3,7 @@ Production settings.
 DJANGO_SETTINGS_MODULE=config.settings.production
 All values via environment variables — never hardcode in this file.
 """
+
 from .base import *  # noqa: F401, F403
 from .base import env
 
@@ -64,11 +65,12 @@ DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@joat.com"
 # ---------------------------------------------------------------------------
 SENTRY_DSN = env("SENTRY_DSN")
 if SENTRY_DSN:
+    import logging
+
     import sentry_sdk
     from sentry_sdk.integrations.celery import CeleryIntegration
     from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.logging import LoggingIntegration
-    import logging
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
