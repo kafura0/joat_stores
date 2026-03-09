@@ -1,15 +1,33 @@
 """
 Store-scoped permission classes for DRF views.
 
-IsStoreScoped    — request.user is authenticated AND belongs to request.store
-IsPlatformAdmin  — request.user has role=platform_admin (cross-store access)
-IsStoreOwner     — request.user has role=store_owner for request.store
-IsStoreManager   — request.user has role=store_manager for request.store
+IsStoreScoped    — STUB (Story 1.3): allows all requests.
+                   Story 1.5 adds: request.user.store_id == request.store.id
+IsPlatformAdmin  — Story 1.5: request.user has role=platform_admin
+IsStoreOwner     — Story 1.5: request.user has role=store_owner for request.store
+IsStoreManager   — Story 1.5: request.user has role=store_manager for request.store
 
 RULE: Every view must use at least one of these — never use
       rest_framework.permissions.IsAuthenticated directly on store-scoped views.
 
-Implementation: Story 1.5
+Implementation: Story 1.3 (IsStoreScoped stub), Story 1.5 (full implementation)
 """
 
-# TODO: Story 1.5 — implement all permission classes
+from rest_framework.permissions import BasePermission
+
+
+class IsStoreScoped(BasePermission):
+    """
+    Verifies the authenticated user belongs to request.store.
+
+    Story 1.3 STUB — allows all requests so TenantViewSet is usable now.
+    Story 1.5 replaces this body with JWT claim check:
+        return (
+            request.user.is_authenticated
+            and str(request.user.store_id) == str(request.store.id)
+        )
+    """
+
+    def has_permission(self, request, view):
+        # TODO: Story 1.5 — check request.user.store_id == request.store.id
+        return True  # stub: allow all for now
