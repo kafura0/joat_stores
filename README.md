@@ -248,7 +248,7 @@ Not just stores. Infrastructure.
 
 ## Project Development Progress
 
-> **Status:** Pre-implementation planning **complete**. Implementation readiness verified. **Ready for Sprint 1.**
+> **Status:** Sprint 1 **in progress** — Epic 1 Stories 1.1–1.4 complete (6/9 stories done).
 
 ### Phase 0 — Planning & Architecture
 
@@ -294,7 +294,40 @@ Not just stores. Infrastructure.
 | Deployment | Docker Compose on VPS — no Kubernetes at MVP |
 | CI/CD | GitHub Actions — lint + test + SSH deploy on merge to main |
 
-### Implementation Sequence
+### Implementation Progress
+
+#### Epic 1: Multi-Tenant Platform Foundation + Auth (in progress)
+
+| Story | Description | Status |
+|---|---|---|
+| 1.1 | Monorepo scaffold + app bootstrapping | Done |
+| 1.1b | Docker Compose — all services + Celery baseline | Done |
+| 1.1c | Minimal CI pipeline — linting + tests on PR | Done |
+| 1.2 | Core Store model + TenantMiddleware | Done |
+| 1.3 | Tenant isolation layers (queryset, serializer, permissions, admin, pagination) | Done |
+| 1.4 | Atomic store provisioning API + SaaS stubs | Done |
+| 1.5 | JWT auth + RBAC (4 roles) | Backlog |
+| 1.6 | PII audit log + OpenAPI schema | Backlog |
+| 1.7 | Storefront Next.js shell + tenant branding | Backlog |
+| 1.8 | Admin Next.js shell + authenticated layout | Backlog |
+
+#### Remaining Epics
+
+| Epic | Scope | Stories | Status |
+|---|---|---|---|
+| Epic 2 | Multi-Provider Payments Engine (M-Pesa) | 7 | Backlog |
+| Epic 3 | Restaurant Full-Service | 13 | Backlog |
+| Epic 4 | Retail Store Commerce | 10 | Backlog |
+| Epic 5 | Bar Tab Management | 5 | Backlog |
+| Epic 6 | Contracting Module | 6 | Backlog |
+| Epic 7 | Reliable Async Operations (Celery) | 4 | Backlog |
+| Epic 8 | Merchant Analytics Dashboard | 7 | Backlog |
+| Epic 9 | SaaS Plans + Subscription Management | 7 | Backlog |
+| Epic 10 | Customer Loyalty + Engagement | 6 | Backlog |
+| Epic 11 | AI + Personalization | 3 | Backlog |
+| Epic 12 | Production Hardening | 6 | Backlog |
+
+### Planning Artifacts
 
 - [x] Product Brief
 - [x] Market & domain research
@@ -303,16 +336,6 @@ Not just stores. Infrastructure.
 - [x] Architecture
 - [x] Epics & Stories (83 stories, 12 epics)
 - [x] Implementation readiness verification
-- [ ] **Sprint 1 — Epic 1:** Monorepo scaffold (cookiecutter-django + Next.js apps + Docker Compose)
-- [ ] **Sprint 1 — Epic 1:** Tenant foundation — TenantModel, TenantMiddleware, JWT + RBAC
-- [ ] **Epic 2:** M-Pesa integration — STK Push, webhook verification, reconciliation
-- [ ] **Epic 3:** Restaurant module — menu, QR dine-in, table session, kitchen view
-- [ ] **Epic 4:** Retail module — product catalog, cart, orders, checkout
-- [ ] **Epic 5:** Bar module — tab, rounds, happy hour, age restriction
-- [ ] **Epic 8:** Analytics dashboard — pre-aggregated revenue + order summaries
-- [ ] **Epic 9:** SaaS billing — subscription plans + M-Pesa recurring payments
-- [ ] **Epic 11:** AI engine — recommendations, dynamic pricing, inventory forecasting
-- [ ] **Epic 12:** Production hardening — CI/CD, monitoring, Kenya DPA compliance
 
 ---
 
