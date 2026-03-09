@@ -18,6 +18,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!storefront/src/lib/
+!admin/src/lib/
 lib64/
 parts/
 sdist/

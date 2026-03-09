@@ -1,0 +1,30 @@
+# Core
+Django==5.2.*
+djangorestframework==3.16.*
+djangorestframework-simplejwt==5.4.*
+django-allauth[socialaccount]==65.*
+django-cors-headers==4.*
+django-environ==0.11.*
+
+# Tenant / Security
+django-safedelete==1.4.*
+django-encrypted-fields==0.2.*
+django-filter==24.*
+
+# Async
+celery==5.6.2
+redis==5.*
+django-celery-beat==2.7.*
+
+# API schema
+drf-spectacular==0.28.*
+
+# Logging / Monitoring
+structlog==24.*
+sentry-sdk[django]==2.*
+
+# Media
+Pillow==11.*
+
+# Utilities
+psycopg2-binary==2.9.*

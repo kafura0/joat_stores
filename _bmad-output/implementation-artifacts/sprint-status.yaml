@@ -45,8 +45,8 @@ development_status:
   # EPIC 1: Multi-Tenant Platform Foundation + Auth
   # =============================================================================
   epic-1: in-progress
-  1-1-monorepo-scaffold-app-bootstrapping: in-progress
-  1-1b-docker-compose-all-services-celery-baseline: backlog
+  1-1-monorepo-scaffold-app-bootstrapping: review
+  1-1b-docker-compose-all-services-celery-baseline: ready-for-dev
   1-1c-minimal-ci-pipeline-linting-tests-on-pr: backlog
   1-2-core-store-model-tenant-middleware: backlog
   1-3-tenant-isolation-layers: backlog
