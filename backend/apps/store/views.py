@@ -9,6 +9,8 @@ Implementation: Story 1.4
 
 import logging
 
+from django.db import transaction
+
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -68,31 +70,34 @@ class StoreStatusUpdateView(APIView):
     permission_classes = [IsPlatformAdmin]
 
     def patch(self, request, pk):
-        try:
-            store = Store.objects.get(pk=pk)
-        except Store.DoesNotExist:
-            return Response(
-                {
-                    "errors": [
-                        {
-                            "field": None,
-                            "message": "Store not found.",
-                            "code": "NOT_FOUND",
-                        }
-                    ]
-                },
-                status=status.HTTP_404_NOT_FOUND,
+        with transaction.atomic():
+            try:
+                # select_for_update prevents concurrent PATCH requests from
+                # both reading the same status and applying duplicate transitions.
+                store = Store.objects.select_for_update().get(pk=pk)
+            except Store.DoesNotExist:
+                return Response(
+                    {
+                        "errors": [
+                            {
+                                "field": None,
+                                "message": "Store not found.",
+                                "code": "NOT_FOUND",
+                            }
+                        ]
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = StoreStatusSerializer(
+                data=request.data,
+                context={"store": store},
             )
+            serializer.is_valid(raise_exception=True)
 
-        serializer = StoreStatusSerializer(
-            data=request.data,
-            context={"store": store},
-        )
-        serializer.is_valid(raise_exception=True)
-
-        old_status = store.status
-        store.status = serializer.validated_data["status"]
-        store.save(update_fields=["status", "updated_at"])
+            old_status = store.status
+            store.status = serializer.validated_data["status"]
+            store.save(update_fields=["status", "updated_at"])
 
         logger.info(
             "StoreStatusChanged",

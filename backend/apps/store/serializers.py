@@ -62,9 +62,11 @@ class StoreProvisionSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         owner_email = validated_data.pop("owner_email")
-        slug = self._generate_unique_slug(validated_data["name"])
 
         with transaction.atomic():
+            # Slug generation inside transaction — prevents race where two
+            # concurrent requests generate the same slug and one gets IntegrityError 500.
+            slug = self._generate_unique_slug(validated_data["name"])
             store = Store.objects.create(
                 slug=slug,
                 **validated_data,
@@ -110,13 +112,10 @@ class StoreDetailSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_subscription_status(self, obj):
-        sub = getattr(obj, "subscription", None)
-        if sub is None:
-            try:
-                sub = obj.subscription
-            except StoreSubscription.DoesNotExist:
-                return None
-        return sub.status
+        try:
+            return obj.subscription.status
+        except StoreSubscription.DoesNotExist:
+            return None
 
 
 # Valid status transitions: (from_status, to_status)

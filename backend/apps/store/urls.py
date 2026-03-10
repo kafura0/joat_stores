@@ -3,7 +3,7 @@ Store app URL configuration.
 
 Platform admin endpoints:
   POST   /api/v1/platform/stores/              — provision new store
-  GET    /api/v1/platform/stores/              — list all stores
+  GET    /api/v1/platform/stores/list/         — list all stores
   PATCH  /api/v1/platform/stores/{id}/status/  — update store status
 
 Implementation: Story 1.4

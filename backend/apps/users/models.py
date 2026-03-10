@@ -64,6 +64,14 @@ class User(AbstractUser):
                 fields=["email", "store"],
                 name="uq_user_email_store",
             ),
+            # PostgreSQL treats NULLs as distinct in unique constraints, so
+            # uq_user_email_store does NOT prevent duplicate platform_admin emails
+            # (store=NULL). This partial index fills that gap.
+            models.UniqueConstraint(
+                fields=["email"],
+                condition=models.Q(store__isnull=True),
+                name="uq_platform_admin_email",
+            ),
         ]
 
     def __str__(self) -> str:

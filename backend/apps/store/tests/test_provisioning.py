@@ -148,6 +148,34 @@ class TestStoreProvisionSerializer(TestCase):
             store = s.save()
             assert store.tenant_type == tt
 
+    def test_provision_rollback_on_mid_transaction_failure(self):
+        """AC2: verify actual DB atomicity — no partial records on mid-tx failure."""
+        from unittest.mock import patch as mock_patch
+
+        data = {
+            "name": "Rollback Shop",
+            "domain": "rollback.joat.com",
+            "tenant_type": "retail",
+            "owner_email": "rollback@test.com",
+        }
+        serializer = StoreProvisionSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+
+        # Inject failure after Store is created but before User is created
+        with mock_patch.object(
+            User.objects,
+            "create_user",
+            side_effect=Exception("injected failure"),
+        ):
+            with pytest.raises(Exception, match="injected failure"):
+                serializer.save()
+
+        # Verify atomicity: Store AND StoreSubscription must have been rolled back
+        assert not Store.objects.filter(domain="rollback.joat.com").exists()
+        assert not StoreSubscription.objects.filter(
+            store__domain="rollback.joat.com"
+        ).exists()
+
 
 @pytest.mark.django_db
 class TestStoreStatusTransitions(TestCase):
@@ -297,6 +325,24 @@ class TestUserStoreFK(TestCase):
         )
         assert user.store is None
         assert user.role == "platform_admin"
+
+    def test_duplicate_platform_admin_email_rejected(self):
+        """M4: uq_platform_admin_email partial index prevents duplicate admin emails."""
+        from django.db import IntegrityError
+
+        User.objects.create_user(
+            email="admin@joat.com",
+            password="pass1",
+            store=None,
+            role="platform_admin",
+        )
+        with pytest.raises(IntegrityError):
+            User.objects.create_user(
+                email="admin@joat.com",
+                password="pass2",
+                store=None,
+                role="platform_admin",
+            )
 
 
 # ---------------------------------------------------------------------------
