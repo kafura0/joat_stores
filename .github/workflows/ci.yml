@@ -28,6 +28,17 @@ jobs:
       - name: flake8
         run: flake8 backend/
 
+      - name: flake8 — ban print() and bare logging calls (AC2, Story 1.6)
+        run: |
+          grep -rn --include="*.py" \
+            -E "^\s*print\(|^\s*logging\.(info|debug|warning|error|critical)\(" \
+            backend/ \
+            --exclude-dir=migrations \
+            --exclude-dir=__pycache__ \
+            --exclude-dir=tests \
+          && echo "ERROR: bare print() or logging.*() found — use structlog" && exit 1 \
+          || echo "OK: no bare print() or logging.*() calls found"
+
       - name: black --check
         run: black --check backend/
 
@@ -120,3 +131,12 @@ jobs:
           CELERY_RESULT_BACKEND: redis://localhost:6379/2
           SECRET_KEY: ci-placeholder-secret-key-not-used-in-production
         run: pytest
+
+      - name: OpenAPI schema validation (AC4, Story 1.6)
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.local
+          DATABASE_URL: postgres://joat_stores:password@localhost:5432/joat_stores
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ci-placeholder-secret-key-not-used-in-production
+        run: python manage.py spectacular --validate --fail-on-warn

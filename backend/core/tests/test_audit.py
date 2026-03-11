@@ -9,7 +9,7 @@ import pytest
 from apps.analytics.models import AdminPIIAccessLog
 from apps.store.models import Store
 from apps.users.models import User
-from core.audit import _mask_email, _mask_phone, log_pii_access, scrub_pii
+from core.audit import _mask_email, _mask_phone, log_pii_access, pii_access_logged, scrub_pii
 
 
 class TestPIIScrubber(TestCase):
@@ -51,6 +51,22 @@ class TestPIIScrubber(TestCase):
         result = scrub_pii(None, None, event_dict)
         assert result["count"] == 42
         assert result["active"] is True
+
+    def test_scrub_pii_handles_nested_dict(self):
+        """M2 fix: nested dicts must also be scrubbed."""
+        event_dict = {
+            "user": {"email": "john@example.com", "phone": "+254712345678"},
+        }
+        result = scrub_pii(None, None, event_dict)
+        assert "john" not in result["user"]["email"]
+        assert "****5678" in result["user"]["phone"]
+
+    def test_scrub_pii_handles_list_values(self):
+        """M2 fix: list values must also be scrubbed."""
+        event_dict = {"contacts": ["john@example.com", "+254712345678"]}
+        result = scrub_pii(None, None, event_dict)
+        assert "john" not in result["contacts"][0]
+        assert "****5678" in result["contacts"][1]
 
 
 @pytest.mark.django_db
@@ -96,4 +112,73 @@ class TestAdminPIIAccessLog(TestCase):
             record_type="User",
             record_id="uuid-123",
         )
+        assert AdminPIIAccessLog.objects.count() == 1
+
+    def test_pii_access_logged_decorator_creates_log(self):
+        """H1 fix: decorator must auto-log without manual per-view call."""
+        from unittest.mock import MagicMock
+
+        store = Store.objects.create(
+            name="Decorator Store",
+            slug="decorator-store",
+            domain="decorator.joat.com",
+        )
+        admin = User.objects.create_user(
+            email="dec-admin@joat.com",
+            password="pass",
+            role="platform_admin",
+        )
+
+        # Simulate a class-based view method decorated with @pii_access_logged
+        class FakeView:
+            pass
+
+        fake_view_instance = FakeView()
+        fake_view_instance.request = MagicMock()
+        fake_view_instance.request.user = admin
+        fake_view_instance.request.user.is_authenticated = True
+        fake_view_instance.request.store = store
+        fake_view_instance.request.path = "/api/v1/customers/abc/"
+        fake_view_instance.request.method = "GET"
+
+        @pii_access_logged(record_type="Customer", record_id_kwarg="pk")
+        def fake_get(self, pk=None):
+            return "response"
+
+        fake_get(fake_view_instance, pk="abc")
+
+        assert AdminPIIAccessLog.objects.count() == 1
+        entry = AdminPIIAccessLog.objects.first()
+        assert entry.record_type == "Customer"
+        assert entry.record_id == "abc"
+
+    def test_pii_access_logged_decorator_logs_even_on_view_exception(self):
+        """H1 AC: log created even if the view raises."""
+        from unittest.mock import MagicMock
+
+        admin = User.objects.create_user(
+            email="exc-admin@joat.com",
+            password="pass",
+            role="platform_admin",
+        )
+
+        class FakeView:
+            pass
+
+        fake_view_instance = FakeView()
+        fake_view_instance.request = MagicMock()
+        fake_view_instance.request.user = admin
+        fake_view_instance.request.user.is_authenticated = True
+        fake_view_instance.request.store = None
+        fake_view_instance.request.path = "/api/v1/customers/xyz/"
+        fake_view_instance.request.method = "GET"
+
+        @pii_access_logged(record_type="Customer")
+        def failing_get(self, pk=None):
+            raise ValueError("view exploded")
+
+        with pytest.raises(ValueError, match="view exploded"):
+            failing_get(fake_view_instance, pk="xyz")
+
+        # Log must still exist
         assert AdminPIIAccessLog.objects.count() == 1

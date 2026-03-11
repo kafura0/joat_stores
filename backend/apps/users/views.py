@@ -21,6 +21,8 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from rest_framework import serializers as drf_serializers
+
 from apps.users.serializers import StoreTokenObtainPairSerializer
 
 # Cookie settings
@@ -55,7 +57,7 @@ class TokenObtainView(APIView):
         )
         try:
             serializer.is_valid(raise_exception=True)
-        except Exception:
+        except drf_serializers.ValidationError:
             return Response(
                 {
                     "errors": [

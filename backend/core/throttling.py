@@ -43,7 +43,7 @@ class StorePlanRateThrottle(SimpleRateThrottle):
             plan = store.subscription.plan
             if plan and plan.api_rate_limit:
                 rate_limit = plan.api_rate_limit
-        except Exception:
+        except AttributeError:
             pass  # no subscription or plan — use default
 
         self.rate = f"{rate_limit}/min"
