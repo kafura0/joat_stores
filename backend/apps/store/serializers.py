@@ -4,8 +4,9 @@ Store serializers for platform admin endpoints.
 StoreProvisionSerializer — validates and creates a store atomically.
 StoreListSerializer      — read-only list representation.
 StoreStatusSerializer    — validates status transitions.
+BrandingSerializer       — public read-only branding response (Story 1.7).
 
-Implementation: Story 1.4
+Implementation: Story 1.4, Story 1.7
 """
 
 from django.db import transaction
@@ -14,7 +15,7 @@ from django.utils.text import slugify
 from rest_framework import serializers
 
 from apps.saas.models import StoreSubscription
-from apps.store.models import Store, StoreStatus, TenantType
+from apps.store.models import Store, StoreSettings, StoreStatus, StoreTheme, TenantType
 from apps.users.models import User
 
 
@@ -64,8 +65,8 @@ class StoreProvisionSerializer(serializers.Serializer):
         owner_email = validated_data.pop("owner_email")
 
         with transaction.atomic():
-            # Slug generation inside transaction — prevents race where two
-            # concurrent requests generate the same slug and one gets IntegrityError 500.
+            # Slug generation inside transaction — prevents race where two concurrent
+            # requests generate the same slug and one gets IntegrityError 500.
             slug = self._generate_unique_slug(validated_data["name"])
             store = Store.objects.create(
                 slug=slug,
@@ -142,3 +143,47 @@ class StoreStatusSerializer(serializers.Serializer):
                 }
             )
         return value
+
+
+class BrandingSerializer(serializers.Serializer):
+    """
+    Public read-only branding response for GET /api/v1/store/branding/.
+
+    Combines Store + StoreSettings + StoreTheme into a single flat payload.
+    No auth required — used by storefront SSR to inject tenant CSS variables.
+
+    Implementation: Story 1.7
+    """
+
+    store_name = serializers.CharField(source="name")
+    logo_url = serializers.SerializerMethodField()
+    tagline = serializers.SerializerMethodField()
+    primary_color = serializers.SerializerMethodField()
+    secondary_color = serializers.SerializerMethodField()
+    font_family = serializers.SerializerMethodField()
+    currency = serializers.CharField()
+    country = serializers.CharField()
+    status = serializers.CharField()
+
+    def _get_settings(self, obj):
+        settings_obj, _ = StoreSettings.objects.get_or_create(store=obj)
+        return settings_obj
+
+    def _get_theme(self, obj):
+        theme, _ = StoreTheme.objects.get_or_create(store=obj)
+        return theme
+
+    def get_logo_url(self, obj):
+        return self._get_settings(obj).logo_url
+
+    def get_tagline(self, obj):
+        return self._get_settings(obj).tagline
+
+    def get_primary_color(self, obj):
+        return self._get_theme(obj).primary_color
+
+    def get_secondary_color(self, obj):
+        return self._get_theme(obj).secondary_color
+
+    def get_font_family(self, obj):
+        return self._get_theme(obj).font_family

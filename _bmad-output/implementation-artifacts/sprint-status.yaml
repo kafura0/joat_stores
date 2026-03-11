@@ -53,7 +53,7 @@ development_status:
   1-4-atomic-store-provisioning-api: done
   1-5-jwt-auth-rbac-4-roles: done
   1-6-pii-audit-log-openapi-schema: done
-  1-7-storefront-nextjs-shell-tenant-branding: backlog
+  1-7-storefront-nextjs-shell-tenant-branding: review
   1-8-admin-nextjs-shell-authenticated-layout: backlog
   epic-1-retrospective: optional
 

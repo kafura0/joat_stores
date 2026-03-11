@@ -92,7 +92,13 @@ class TenantMiddleware(MiddlewareMixin):
             )
 
         # 6. Suspended → 503
-        if store.status == StoreStatus.SUSPENDED:
+        # Branding is exempt so storefront can render a branded 503 page.
+        SUSPENDED_PASSTHROUGH_PATHS = getattr(
+            settings, "SUSPENDED_PASSTHROUGH_PATHS", ["/api/v1/store/branding/"]
+        )
+        if store.status == StoreStatus.SUSPENDED and not any(
+            path.startswith(sp) for sp in SUSPENDED_PASSTHROUGH_PATHS
+        ):
             return JsonResponse(
                 {
                     "errors": [

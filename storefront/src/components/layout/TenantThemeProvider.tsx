@@ -1,56 +1,63 @@
-// storefront/src/components/layout/TenantThemeProvider.tsx
-// Server Component (no 'use client' — reads hostname server-side)
-
-import React from "react";
-
-interface TenantTheme {
-  primaryColor: string;
-  secondaryColor: string;
-  fontFamily: string;
-}
-
-// Default theme used until Story 1.7 wires the real branding API
-const DEFAULT_THEME: TenantTheme = {
-  primaryColor: "#1a1a1a",
-  secondaryColor: "#6b7280",
-  fontFamily: "Inter, sans-serif",
-};
-
 /**
- * TenantThemeProvider
+ * TenantThemeProvider — Server Component.
  *
- * Injects CSS variables from the tenant's branding configuration.
- * Story 1.7 adds the real branding API call (GET /api/v1/store/branding/).
- * At this stage, it injects default theme variables only.
+ * Fetches live branding from GET /api/v1/store/branding/ on every SSR request
+ * and injects CSS variables into the page root so all components can use:
+ *   var(--color-primary), var(--color-secondary), var(--font-family)
  *
- * CSS variables injected:
- *   --color-primary    → brand primary colour
- *   --color-secondary  → brand secondary colour
- *   --font-family      → brand font (defaults to Inter)
+ * Suspended stores: renders branded SuspendedPage inline.
+ * Errors: falls back to DEFAULT_BRANDING — never crashes SSR.
  *
  * RULE: Brand colours must NEVER be hardcoded in component files.
  * Always use var(--color-primary) in Tailwind or inline styles.
+ *
+ * Implementation: Story 1.7
  */
+
+import { headers } from "next/headers";
+import React from "react";
+
+import StorefrontFooter from "@/components/layout/StorefrontFooter";
+import StorefrontHeader from "@/components/layout/StorefrontHeader";
+import { fetchTenantBranding } from "@/lib/branding";
+import { DEFAULT_BRANDING } from "@/types/branding";
+import SuspendedPage from "@/app/suspended/page";
+
 export default async function TenantThemeProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // TODO: Story 1.7 — fetch branding from GET /api/v1/store/branding/
-  // const headersList = await headers();
-  // const hostname = headersList.get("host") ?? "";
-  // const branding = await fetchTenantBranding(hostname);
-  const theme = DEFAULT_THEME;
+  const headersList = await headers();
+  const hostname = headersList.get("host") ?? "localhost";
+
+  const branding = await fetchTenantBranding(hostname);
 
   const cssVariables = {
-    "--color-primary": theme.primaryColor,
-    "--color-secondary": theme.secondaryColor,
-    "--font-family": theme.fontFamily,
+    "--color-primary": branding.primary_color ?? DEFAULT_BRANDING.primary_color,
+    "--color-secondary":
+      branding.secondary_color ?? DEFAULT_BRANDING.secondary_color,
+    "--font-family": `${branding.font_family ?? DEFAULT_BRANDING.font_family}, sans-serif`,
   } as React.CSSProperties;
 
+  // Suspended store → render branded 503 page, not children
+  if (branding.status === "suspended") {
+    return (
+      <div style={cssVariables} className="flex min-h-screen flex-col">
+        <StorefrontHeader branding={branding} />
+        <main className="flex flex-1 items-center justify-center px-4">
+          <SuspendedPage />
+        </main>
+        <StorefrontFooter branding={branding} />
+      </div>
+    );
+  }
+
   return (
-    <div style={cssVariables} className="min-h-screen">
-      {children}
+    <div style={cssVariables} className="flex min-h-screen flex-col">
+      <StorefrontHeader branding={branding} />
+      <main className="flex-1">{children}</main>
+      <StorefrontFooter branding={branding} />
     </div>
   );
 }

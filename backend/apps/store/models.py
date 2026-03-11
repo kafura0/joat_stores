@@ -124,8 +124,20 @@ class StoreSettings(TenantModel):
     """
     Per-store configuration settings.
 
-    Stub — full implementation in Story 1.7 (branding + storefront config).
+    Story 1.7 adds: tagline, logo_url.
     """
+
+    tagline = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Short store tagline shown on the storefront.",
+    )
+    logo_url = models.URLField(
+        blank=True,
+        default="",
+        help_text="Absolute URL to the store's WebP logo.",
+    )
 
     class Meta:
         db_table = "store_storesettings"
@@ -138,8 +150,24 @@ class StoreTheme(TenantModel):
     """
     Per-store branding theme (colours, fonts, logo).
 
-    Stub — full implementation in Story 1.7 (storefront shell + tenant branding).
+    Story 1.7 adds: primary_color, secondary_color, font_family.
     """
+
+    primary_color = models.CharField(
+        max_length=20,
+        default="#1a1a1a",
+        help_text="CSS colour value for brand primary (e.g. #e63946).",
+    )
+    secondary_color = models.CharField(
+        max_length=20,
+        default="#6b7280",
+        help_text="CSS colour value for brand secondary.",
+    )
+    font_family = models.CharField(
+        max_length=100,
+        default="Inter",
+        help_text="Font family name (e.g. 'Inter', 'Roboto').",
+    )
 
     class Meta:
         db_table = "store_storetheme"
