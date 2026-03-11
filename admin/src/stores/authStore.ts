@@ -1,19 +1,43 @@
-// stores/authStore.ts
-// Auth state management for admin.
-// Full implementation in Story 1.8.
-// RULE: JWT access token stored in memory only — never localStorage.
+/**
+ * Auth state management for the admin app.
+ *
+ * RULES:
+ *   - Access token stored in memory ONLY — never localStorage/sessionStorage
+ *   - User identity (role, store_id) decoded from JWT payload
+ *   - Cleared on logout or refresh failure
+ *
+ * Implementation: Story 1.8
+ */
+
+"use client";
 
 import { create } from "zustand";
 
+import type { IUser, UserRole } from "@/types/auth";
+
 interface AuthStore {
-  // Access token in memory only — never localStorage
+  /** JWT access token — in memory only, never persisted */
   accessToken: string | null;
+  /** Decoded user info from JWT payload */
+  user: IUser | null;
+
   setAccessToken: (token: string | null) => void;
+  setUser: (user: IUser | null) => void;
   clearAuth: () => void;
+
+  // Derived helpers
+  isAuthenticated: () => boolean;
+  getRole: () => UserRole | null;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>((set, get) => ({
   accessToken: null,
+  user: null,
+
   setAccessToken: (token) => set({ accessToken: token }),
-  clearAuth: () => set({ accessToken: null }),
+  setUser: (user) => set({ user }),
+  clearAuth: () => set({ accessToken: null, user: null }),
+
+  isAuthenticated: () => get().accessToken !== null,
+  getRole: () => get().user?.role ?? null,
 }));

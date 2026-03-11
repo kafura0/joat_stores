@@ -54,7 +54,7 @@ development_status:
   1-5-jwt-auth-rbac-4-roles: done
   1-6-pii-audit-log-openapi-schema: done
   1-7-storefront-nextjs-shell-tenant-branding: done
-  1-8-admin-nextjs-shell-authenticated-layout: backlog
+  1-8-admin-nextjs-shell-authenticated-layout: review
   epic-1-retrospective: optional
 
   # =============================================================================
