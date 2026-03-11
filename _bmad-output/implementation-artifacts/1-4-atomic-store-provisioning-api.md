@@ -1,6 +1,6 @@
 # Story 1.4: Atomic Store Provisioning API
 
-Status: review
+Status: done
 
 ---
 

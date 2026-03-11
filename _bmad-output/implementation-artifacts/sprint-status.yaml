@@ -50,9 +50,9 @@ development_status:
   1-1c-minimal-ci-pipeline-linting-tests-on-pr: done
   1-2-core-store-model-tenant-middleware: done
   1-3-tenant-isolation-layers: done
-  1-4-atomic-store-provisioning-api: review
-  1-5-jwt-auth-rbac-4-roles: review
-  1-6-pii-audit-log-openapi-schema: review
+  1-4-atomic-store-provisioning-api: done
+  1-5-jwt-auth-rbac-4-roles: done
+  1-6-pii-audit-log-openapi-schema: done
   1-7-storefront-nextjs-shell-tenant-branding: backlog
   1-8-admin-nextjs-shell-authenticated-layout: backlog
   epic-1-retrospective: optional
