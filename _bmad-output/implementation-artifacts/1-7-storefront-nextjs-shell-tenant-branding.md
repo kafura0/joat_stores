@@ -1,6 +1,6 @@
 # Story 1.7: Storefront Next.js Shell + Tenant Branding
 
-Status: review
+Status: done
 
 ---
 
@@ -75,7 +75,8 @@ Enforced via: Server Components for all layout/branding content, no client-side 
 - [x] **Task 3: Wire branding URL** (AC: 1)
   - [x] `apps/store/urls.py`: add `branding/` path → BrandingView
   - [x] `config/urls.py`: include `api/v1/store/` → store URLs
-  - [x] Add `api/v1/store/` to `MIDDLEWARE_BYPASS_PATHS` (branding is public, no tenant auth needed)
+  - [x] `core/middleware.py`: add `SUSPENDED_PASSTHROUGH_PATHS` check — branding endpoint bypasses the middleware 503 so the view can return `store_name` in the 503 body. NOTE: branding is NOT added to `MIDDLEWARE_BYPASS_PATHS` because TenantMiddleware must still resolve `request.store` for the view to work.
+  - [x] `config/settings/base.py`: add `SUSPENDED_PASSTHROUGH_PATHS` setting (default: `["/api/v1/store/branding/"]`)
 
 - [x] **Task 4: Django tests for branding API** (AC: 1, 3)
   - [x] `apps/store/tests/test_branding.py`: 10+ tests covering:
@@ -194,15 +195,16 @@ style={{ color: 'var(--color-primary)' }}
 - `storefront/src/app/suspended/page.tsx`
 
 **Modified:**
-- `backend/apps/store/models.py` — StoreSettings + StoreTheme fields
-- `backend/apps/store/serializers.py` — BrandingSerializer
+- `backend/apps/store/models.py` — StoreSettings + StoreTheme fields; CSS color validators on StoreTheme
+- `backend/apps/store/serializers.py` — BrandingSerializer; instance-level cache to reduce get_or_create calls from 5 → 2
 - `backend/apps/store/views.py` — BrandingView
 - `backend/apps/store/urls.py` — branding route
 - `backend/config/urls.py` — store URL include
-- `backend/config/settings/base.py` — bypass path
+- `backend/config/settings/base.py` — SUSPENDED_PASSTHROUGH_PATHS setting
+- `backend/core/middleware.py` — SUSPENDED_PASSTHROUGH_PATHS passthrough logic
 - `storefront/src/components/layout/TenantThemeProvider.tsx` — wire branding API
 - `storefront/src/app/layout.tsx` — add header/footer
-- `storefront/src/app/page.tsx` — product listing shell
+- `storefront/src/app/page.tsx` — product listing shell; AC5 empty state text fix
 
 ---
 
@@ -230,4 +232,5 @@ claude-sonnet-4-6
 ### Change Log
 
 - 2026-03-11: Story created from Epic 1 story 1.7 spec
+- 2026-03-11: Code review fixes — BrandingSerializer query reduction (5→2), CSS color validators, AC5 text fix, NEXT_PUBLIC_API_URL error logging, SUSPENDED_PASSTHROUGH_PATHS in settings, File List + Task 3 docs corrected
 

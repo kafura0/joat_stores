@@ -38,11 +38,8 @@ export default function ProductListingPage() {
               className="text-xl font-semibold"
               style={{ color: "var(--color-primary)" }}
             >
-              Products coming soon
+              Products coming soon — check back shortly.
             </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Check back shortly — we&apos;re stocking up.
-            </p>
           </div>
         ) : (
           /* Product card slots — Story 4.1 replaces with real ProductCard components */

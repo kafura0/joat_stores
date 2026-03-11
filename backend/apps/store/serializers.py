@@ -152,6 +152,9 @@ class BrandingSerializer(serializers.Serializer):
     Combines Store + StoreSettings + StoreTheme into a single flat payload.
     No auth required — used by storefront SSR to inject tenant CSS variables.
 
+    Settings and theme are fetched once per serialization via cached properties
+    (_settings_cache, _theme_cache) — 2 DB queries total, not 5.
+
     Implementation: Story 1.7
     """
 
@@ -166,12 +169,14 @@ class BrandingSerializer(serializers.Serializer):
     status = serializers.CharField()
 
     def _get_settings(self, obj):
-        settings_obj, _ = StoreSettings.objects.get_or_create(store=obj)
-        return settings_obj
+        if not hasattr(self, "_settings_cache") or self._settings_cache.store_id != obj.pk:
+            self._settings_cache, _ = StoreSettings.objects.get_or_create(store=obj)
+        return self._settings_cache
 
     def _get_theme(self, obj):
-        theme, _ = StoreTheme.objects.get_or_create(store=obj)
-        return theme
+        if not hasattr(self, "_theme_cache") or self._theme_cache.store_id != obj.pk:
+            self._theme_cache, _ = StoreTheme.objects.get_or_create(store=obj)
+        return self._theme_cache
 
     def get_logo_url(self, obj):
         return self._get_settings(obj).logo_url

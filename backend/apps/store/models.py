@@ -15,12 +15,22 @@ Story 1.4 adds: Store provisioning API, StoreSubscription FK
 Story 1.7 adds: StoreSettings + StoreTheme full implementation (branding)
 """
 
+import re
 import uuid
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+
+_CSS_COLOR_RE = re.compile(
+    r"^(#([0-9a-fA-F]{3}){1,2}|rgb\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\)|[a-zA-Z]+)$"
+)
+validate_css_color = RegexValidator(
+    regex=_CSS_COLOR_RE,
+    message="Enter a valid CSS colour value (hex, rgb(), or named colour).",
+)
 
 from safedelete.models import SOFT_DELETE_CASCADE, SafeDeleteModel
 from safedelete.queryset import SafeDeleteQueryset
@@ -156,11 +166,13 @@ class StoreTheme(TenantModel):
     primary_color = models.CharField(
         max_length=20,
         default="#1a1a1a",
+        validators=[validate_css_color],
         help_text="CSS colour value for brand primary (e.g. #e63946).",
     )
     secondary_color = models.CharField(
         max_length=20,
         default="#6b7280",
+        validators=[validate_css_color],
         help_text="CSS colour value for brand secondary.",
     )
     font_family = models.CharField(

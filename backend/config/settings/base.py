@@ -280,6 +280,12 @@ MIDDLEWARE_BYPASS_PATHS = env.list(
     "MIDDLEWARE_BYPASS_PATHS",
     default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/api/v1/platform/", "/api/v1/auth/", "/accounts/"],
 )
+# Paths where suspended stores are allowed to pass through TenantMiddleware
+# (so the view can return a branded error response rather than a generic 503).
+SUSPENDED_PASSTHROUGH_PATHS = env.list(
+    "SUSPENDED_PASSTHROUGH_PATHS",
+    default=["/api/v1/store/branding/"],
+)
 
 # ---------------------------------------------------------------------------
 # CORS

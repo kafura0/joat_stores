@@ -12,8 +12,15 @@
 
 import { BrandingData, DEFAULT_BRANDING } from "@/types/branding";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+if (!API_URL) {
+  // Fail loudly at module load time in server environments so misconfigured
+  // deployments surface immediately rather than silently returning defaults.
+  console.error(
+    "[branding] NEXT_PUBLIC_API_URL is not set — branding fetches will fail and DEFAULT_BRANDING will be used on every page."
+  );
+}
+const BRANDING_API_URL = API_URL ?? "http://localhost/api/v1";
 
 /**
  * Extracts the store identifier from a hostname.
@@ -38,7 +45,7 @@ export async function fetchTenantBranding(
       ...getStoreIdHeader(),
     };
 
-    const res = await fetch(`${API_URL}/store/branding/`, {
+    const res = await fetch(`${BRANDING_API_URL}/store/branding/`, {
       headers,
       cache: "no-store",
     });
