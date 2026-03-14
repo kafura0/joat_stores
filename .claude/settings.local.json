@@ -25,7 +25,28 @@
       "Bash(bash:*)",
       "Bash(DATABASE_URL=\"postgres://x\" REDIS_URL=\"redis://x\" SECRET_KEY=\"test-secret-key-that-is-long-enough-to-pass-validation\" DARAJA_CONSUMER_KEY=\"test\" DARAJA_CONSUMER_SECRET=\"test\" bash:*)",
       "Bash(.venv/Scripts/python.exe:*)",
-      "Bash(echo EXISTS:$?:*)"
+      "Bash(echo EXISTS:$?:*)",
+      "Bash(cp:*)",
+      "Bash(grep -n \"spectacular\\\\|flake8.*print\\\\|no-print\" /c/Users/User/Desktop/joat_websites/joat_stores/.github/workflows/*.yml 2>/dev/null | head -20 || echo \"no spectacular or print check in CI\")",
+      "Bash(ls /c/Users/User/Desktop/joat_websites/joat_stores/.github/workflows/ 2>/dev/null && cat /c/Users/User/Desktop/joat_websites/joat_stores/.github/workflows/*.yml 2>/dev/null | grep -A3 -B3 \"flake8\\\\|spectacular\" | head -40)",
+      "Bash(npx eslint:*)",
+      "Bash(cd /c/Users/User/Desktop/joat_websites/joat_stores/backend && python manage.py check 2>&1 | tail -2 && flake8 apps/store/ core/middleware.py 2>&1)",
+      "Bash(cd /c/Users/User/Desktop/joat_websites/joat_stores/backend && flake8 apps/store/ core/middleware.py 2>&1)",
+      "Bash(cd /c/Users/User/Desktop/joat_websites/joat_stores/backend && flake8 apps/store/ core/middleware.py 2>&1 && black --check apps/store/ core/middleware.py 2>&1 | tail -5)",
+      "Bash(grep -rn \"token\\\\|auth\\\\|login\\\\|logout\\\\|refresh\" C:/Users/User/Desktop/joat_websites/joat_stores/backend/config/urls.py 2>/dev/null && echo \"---\" && find C:/Users/User/Desktop/joat_websites/joat_stores/backend/apps -name \"urls.py\" | xargs grep -l \"token\\\\|auth\\\\|login\" 2>/dev/null)",
+      "Bash(find \"C:/Users/User/Desktop/joat_websites/joat_stores\" -name \".env*\" -not -path \"*node_modules*\" -not -path \"*/.git/*\" 2>/dev/null | head -20; find \"C:/Users/User/Desktop/joat_websites/joat_stores\" -name \"*.env\" -not -path \"*node_modules*\" 2>/dev/null | head -10)",
+      "Bash(cat C:/Users/User/Desktop/joat_websites/joat_stores/backend/apps/restaurant/migrations/*.py 2>/dev/null | head -5; ls C:/Users/User/Desktop/joat_websites/joat_stores/backend/apps/restaurant/migrations/)",
+      "Bash(grep -n \"StoreFactory\\\\|class.*Factory\" C:/Users/User/Desktop/joat_websites/joat_stores/backend/apps/store/tests/*.py | head -10)",
+      "Bash(docker ps:*)",
+      "Bash(cd C:/Users/User/Desktop/joat_websites/joat_stores/backend && DATABASE_URL=\"postgres://joat_stores:password@localhost:5432/joat_stores\" python -m pytest apps/restaurant/tests/ -x -q 2>&1 | tail -20)",
+      "Bash(docker exec:*)",
+      "Bash(docker port:*)",
+      "Bash(cd C:/Users/User/Desktop/joat_websites/joat_stores/backend && flake8 apps/restaurant/ 2>&1)",
+      "Bash(cd C:/Users/User/Desktop/joat_websites/joat_stores/backend && flake8 apps/restaurant/views.py apps/restaurant/urls.py apps/restaurant/tests/test_public_menu.py 2>&1)",
+      "Bash(cd C:/Users/User/Desktop/joat_websites/joat_stores/backend && flake8 apps/restaurant/ 2>&1 && python -m pytest apps/restaurant/tests/ -q 2>&1 | tail -5)",
+      "Bash(for f:*)",
+      "Read(//c/Users/User/Desktop/joat_websites/joat_stores/**)",
+      "Bash(done)"
     ]
   }
 }
