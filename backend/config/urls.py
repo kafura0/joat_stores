@@ -34,7 +34,7 @@ urlpatterns = [
     path("api/v1/store/", include((storefront_urlpatterns, "store-public"))),  # Story 1.7
     path("api/v1/auth/", include("apps.users.urls")),           # Story 1.5
     path("api/v1/store/", include("apps.product.urls")),      # Epic 4 — product catalog
-    # path("api/v1/orders/", include("apps.order.urls")),      # Epic 4 — wired in Story 4.3
+    path("api/v1/store/", include("apps.order.urls")),        # Epic 4 — cart + checkout + orders
     path("api/v1/payments/", include("apps.payment.urls", namespace="payment")),  # Epic 2
     path("api/v1/restaurant/", include("apps.restaurant.urls")),  # Epic 3
     path("t/<uuid:table_id>/", include("apps.restaurant.fallback_urls")),  # Story 3.5 fallback

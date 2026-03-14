@@ -94,10 +94,10 @@ development_status:
   # =============================================================================
   epic-4: in-progress
   4-1-product-catalog-categories-variants-inventory-images: done
-  4-2-redis-cart-30-day-ttl-guest-auth: backlog
-  4-3-order-lifecycle-state-machine: backlog
-  4-3b-merchant-daily-view-zero-navigation-dashboard: backlog
-  4-4-guest-checkout-mpesa-payment: backlog
+  4-2-redis-cart-30-day-ttl-guest-auth: done
+  4-3-order-lifecycle-state-machine: done
+  4-3b-merchant-daily-view-zero-navigation-dashboard: done
+  4-4-guest-checkout-mpesa-payment: done
   4-5-google-oauth2-pkce-authenticated-checkout: backlog
   4-6-order-confirmation-email-low-stock-alerts: backlog
   4-7-card-payment-scaffold: backlog
