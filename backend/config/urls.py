@@ -37,6 +37,7 @@ urlpatterns = [
     # path("api/v1/orders/", include("apps.order.urls")),      # Epic 4
     path("api/v1/payments/", include("apps.payment.urls", namespace="payment")),  # Epic 2
     path("api/v1/restaurant/", include("apps.restaurant.urls")),  # Epic 3
+    path("t/<uuid:table_id>/", include("apps.restaurant.fallback_urls")),  # Story 3.5 fallback
     # path("api/v1/bar/", include("apps.bar.urls")),           # Epic 5
     # path("api/v1/analytics/", include("apps.analytics.urls")),    # Epic 8
     # path("api/v1/ai/", include("apps.ai.urls")),             # Epic 11

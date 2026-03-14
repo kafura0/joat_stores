@@ -259,10 +259,20 @@ class QRTokenGenerateView(APIView):
 
 class QRTokenValidateView(APIView):
     """
-    Story 3.3 — Validate a QR token.
+    Stories 3.3 + 3.5 — Validate a QR token.
 
     GET /api/v1/restaurant/qr/validate/?token=<token>
+
+    Error messages are intentionally generic (Story 3.5 AC4): technical details
+    about why a token failed are logged server-side but never exposed to the customer.
     """
+
+    # User-facing messages — no technical details (Story 3.5 AC4)
+    _USER_MESSAGES = {
+        "INVALID_QR_TOKEN": "Invalid or damaged QR code. Please ask staff for help.",
+        "QR_TOKEN_EXPIRED": "This QR code has expired. Please ask your waiter to refresh it.",
+        "QR_TOKEN_ALREADY_USED": "This QR code has already been used. Please scan the current code on your table.",
+    }
 
     permission_classes = [AllowAny]
 
@@ -270,7 +280,7 @@ class QRTokenValidateView(APIView):
         token = request.query_params.get("token", "")
         if not token:
             return Response(
-                {"errors": [{"code": "INVALID_QR_TOKEN", "message": "token required"}]},
+                {"errors": [{"code": "INVALID_QR_TOKEN", "message": self._USER_MESSAGES["INVALID_QR_TOKEN"]}]},
                 status=400,
             )
 
@@ -282,8 +292,11 @@ class QRTokenValidateView(APIView):
         try:
             payload = validate_qr_token(token, secret, redis_client)
         except QRTokenError as exc:
+            # Log the real reason; return generic message to client
+            log.warning("qr_token_validation_failed", code=exc.code, detail=str(exc))
+            user_message = self._USER_MESSAGES.get(exc.code, self._USER_MESSAGES["INVALID_QR_TOKEN"])
             return Response(
-                {"errors": [{"code": exc.code, "message": str(exc)}]},
+                {"errors": [{"code": exc.code, "message": user_message}]},
                 status=400,
             )
 
@@ -294,8 +307,9 @@ class QRTokenValidateView(APIView):
                 store_id=payload["store_id"],
             )
         except Table.DoesNotExist:
+            log.warning("qr_token_table_not_found", table_id=payload.get("table_id"))
             return Response(
-                {"errors": [{"code": "INVALID_QR_TOKEN", "message": "Table not found"}]},
+                {"errors": [{"code": "INVALID_QR_TOKEN", "message": self._USER_MESSAGES["INVALID_QR_TOKEN"]}]},
                 status=400,
             )
 
@@ -310,7 +324,38 @@ class QRTokenValidateView(APIView):
             "table_number": table.number,
             "store_id": str(table.store_id),
             "store_name": table.store.name,
+            # Confirmation text for AC1 — frontend renders this as-is
+            "confirmation_prompt": f"You're joining Table {table.number}'s session at {table.store.name}. Is this correct?",
+            # Fallback URL for AC2 — shown when customer taps "No, wrong table"
+            "fallback_url": f"/t/{table.id}/",
             "open_session_id": str(open_session.id) if open_session else None,
+        })
+
+
+class PublicTableView(APIView):
+    """
+    Story 3.5 — Public table info endpoint. Used as fallback URL when a customer
+    scans the wrong table's QR code.
+
+    GET /t/{table_id}/
+    Returns: table_number, store_name — enough for the customer to confirm which
+    table they're at and ask staff for help.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, table_id):
+        try:
+            table = Table.objects.select_related("store").get(id=table_id, is_active=True)
+        except Table.DoesNotExist:
+            return Response({"errors": [{"code": "TABLE_NOT_FOUND"}]}, status=404)
+
+        return Response({
+            "table_id": str(table.id),
+            "table_number": table.number,
+            "store_id": str(table.store_id),
+            "store_name": table.store.name,
+            "message": f"This is Table {table.number} at {table.store.name}. Please ask a staff member to scan the correct QR code for you.",
         })
 
 

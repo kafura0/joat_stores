@@ -78,7 +78,7 @@ development_status:
   3-2-public-menu-url: done
   3-3-hmac-qr-table-token-generation-validation: done
   3-4-table-tablesession-state-machine-waiter-assignment: done
-  3-5-qr-scan-errors-wrong-table-guard: backlog
+  3-5-qr-scan-errors-wrong-table-guard: done
   3-6-dine-in-order-denormalized-kitchen-ticket: backlog
   3-6b-customer-dine-in-order-confirmation-live-status-screen: backlog
   3-7-pendingorder-waiter-convert-screen: backlog
