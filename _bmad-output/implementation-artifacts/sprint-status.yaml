@@ -119,19 +119,19 @@ development_status:
   # =============================================================================
   # EPIC 6: Contracting Module
   # =============================================================================
-  epic-6: in-progress
-  6-1-contracting-tenant-type-service-catalog: backlog
-  6-2-service-booking-availability-calendar: backlog
-  6-3-quote-request-quote-acceptance: backlog
-  6-4-job-milestones-completion-photos: backlog
-  6-5-invoice-generation-whatsapp-shareable-pdf: backlog
-  6-6-invoice-payment-collection: backlog
+  epic-6: done
+  6-1-contracting-tenant-type-service-catalog: done
+  6-2-service-booking-availability-calendar: done
+  6-3-quote-request-quote-acceptance: done
+  6-4-job-milestones-completion-photos: done
+  6-5-invoice-generation-whatsapp-shareable-pdf: done
+  6-6-invoice-payment-collection: done
   epic-6-retrospective: optional
 
   # =============================================================================
   # EPIC 7: Reliable Async Operations
   # =============================================================================
-  epic-7: backlog
+  epic-7: in-progress
   7-1-dlq-exponential-backoff-hardening-on-all-tasks: backlog
   7-2-celery-beat-full-schedule: backlog
   7-3-worker-health-endpoint: backlog

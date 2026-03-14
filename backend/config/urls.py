@@ -40,6 +40,7 @@ urlpatterns = [
     path("t/<uuid:table_id>/", include("apps.restaurant.fallback_urls")),  # Story 3.5 fallback
     path("p/", include("apps.product.public_urls")),  # Story 4.1 — product QR scan
     path("api/v1/bar/", include("apps.bar.urls", namespace="bar")),  # Epic 5
+    path("api/v1/contracting/", include("apps.contracting.urls", namespace="contracting")),  # Epic 6
     # path("api/v1/analytics/", include("apps.analytics.urls")),    # Epic 8
     # path("api/v1/ai/", include("apps.ai.urls")),             # Epic 11
     # path("api/v1/loyalty/", include("apps.loyalty.urls")),   # Epic 10
