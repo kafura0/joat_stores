@@ -44,7 +44,7 @@ development_status:
   # =============================================================================
   # EPIC 1: Multi-Tenant Platform Foundation + Auth
   # =============================================================================
-  epic-1: in-progress
+  epic-1: done
   1-1-monorepo-scaffold-app-bootstrapping: done
   1-1b-docker-compose-all-services-celery-baseline: done
   1-1c-minimal-ci-pipeline-linting-tests-on-pr: done
@@ -54,27 +54,27 @@ development_status:
   1-5-jwt-auth-rbac-4-roles: done
   1-6-pii-audit-log-openapi-schema: done
   1-7-storefront-nextjs-shell-tenant-branding: done
-  1-8-admin-nextjs-shell-authenticated-layout: review
+  1-8-admin-nextjs-shell-authenticated-layout: done
   epic-1-retrospective: optional
 
   # =============================================================================
   # EPIC 2: Multi-Provider Payments Engine
   # =============================================================================
-  epic-2: backlog
-  2-0-phone-number-normalization-validation-service: backlog
-  2-1-daraja-client-oauth-token-cache: backlog
-  2-2-mpesa-stk-push-initiation-idempotency: backlog
-  2-3-daraja-webhook-processing-receipt-idempotency: backlog
-  2-4-stk-push-timeout-expired-status: backlog
-  2-5-payment-reconciliation-reversal: backlog
+  epic-2: done
+  2-0-phone-number-normalization-validation-service: done
+  2-1-daraja-client-oauth-token-cache: done
+  2-2-mpesa-stk-push-initiation-idempotency: done
+  2-3-daraja-webhook-processing-receipt-idempotency: done
+  2-4-stk-push-timeout-expired-status: done
+  2-5-payment-reconciliation-reversal: done
   2-6-multi-provider-payment-routing-card-payments: backlog
   epic-2-retrospective: optional
 
   # =============================================================================
   # EPIC 3: Restaurant Full-Service
   # =============================================================================
-  epic-3: backlog
-  3-1-menu-management-api: backlog
+  epic-3: in-progress
+  3-1-menu-management-api: done
   3-2-public-menu-url: backlog
   3-3-hmac-qr-table-token-generation-validation: backlog
   3-4-table-tablesession-state-machine-waiter-assignment: backlog

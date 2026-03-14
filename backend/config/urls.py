@@ -35,8 +35,8 @@ urlpatterns = [
     path("api/v1/auth/", include("apps.users.urls")),           # Story 1.5
     # path("api/v1/products/", include("apps.product.urls")),  # Epic 4
     # path("api/v1/orders/", include("apps.order.urls")),      # Epic 4
-    # path("api/v1/payments/", include("apps.payment.urls")),  # Epic 2
-    # path("api/v1/restaurant/", include("apps.restaurant.urls")),  # Epic 3
+    path("api/v1/payments/", include("apps.payment.urls", namespace="payment")),  # Epic 2
+    path("api/v1/restaurant/", include("apps.restaurant.urls")),  # Epic 3
     # path("api/v1/bar/", include("apps.bar.urls")),           # Epic 5
     # path("api/v1/analytics/", include("apps.analytics.urls")),    # Epic 8
     # path("api/v1/ai/", include("apps.ai.urls")),             # Epic 11
