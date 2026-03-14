@@ -73,7 +73,7 @@ development_status:
   # =============================================================================
   # EPIC 3: Restaurant Full-Service
   # =============================================================================
-  epic-3: in-progress
+  epic-3: done
   3-1-menu-management-api: done
   3-2-public-menu-url: done
   3-3-hmac-qr-table-token-generation-validation: done
@@ -86,7 +86,7 @@ development_status:
   3-9-reservation-model: done
   3-10-takeaway-order-type: done
   3-11-restaurant-bill-payment-split-bill: done
-  3-12-fr4-cross-epic-tenant-type-lock-test: backlog
+  3-12-fr4-cross-epic-tenant-type-lock-test: done
   epic-3-retrospective: optional
 
   # =============================================================================

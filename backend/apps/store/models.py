@@ -115,19 +115,39 @@ class Store(SafeDeleteModel):
 
         On update, if tenant_type is being changed and the store already has
         orders, raise ValidationError.  The guard is application-level only —
-        no DB constraint is added.  The lazy import ensures this works even
-        before the Order model migration has run.
+        no DB constraint is added.  Lazy imports avoid circular dependency
+        issues; missing models are silently skipped (pre-migration safety).
         """
         if self.pk:
             original = Store.objects.filter(pk=self.pk).first()
             if original and original.tenant_type != self.tenant_type:
-                from apps.order.models import Order  # lazy — avoids circular import
-
-                if Order.objects.filter(store=self).exists():
+                if self._has_existing_orders():
                     raise ValidationError(
                         "tenant_type cannot be changed after orders exist"
                     )
         super().save(*args, **kwargs)
+
+    def _has_existing_orders(self) -> bool:
+        """Return True if this store has any orders across all commerce verticals."""
+        # Restaurant vertical — DineInOrder (Epic 3)
+        try:
+            from apps.restaurant.models import DineInOrder
+
+            if DineInOrder.objects.filter(store=self).exists():
+                return True
+        except Exception:
+            pass
+
+        # Retail vertical — Order (Epic 4, not yet implemented)
+        try:
+            from apps.order.models import Order
+
+            if Order.objects.filter(store=self).exists():
+                return True
+        except Exception:
+            pass
+
+        return False
 
 
 class StoreSettings(TenantModel):
