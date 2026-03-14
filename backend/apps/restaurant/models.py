@@ -4,6 +4,7 @@ Restaurant domain models.
 Story 3.1: MenuSection, MenuItem, ModifierGroup, Modifier
 Story 3.3: Table
 Story 3.4: TableSession
+Story 3.6: DineInOrder, KitchenTicket
 
 All models inherit TenantModel (UUID PK, store FK, soft-delete, TenantQuerySet).
 """
@@ -305,3 +306,154 @@ class TableSession(TenantModel):
 
             self.closed_at = timezone.now()
         self.save(update_fields=["status", "closed_at"] if new_status == self.STATUS_CLOSED else ["status"])
+
+
+# ---------------------------------------------------------------------------
+# Story 3.6 — DineInOrder + KitchenTicket
+# ---------------------------------------------------------------------------
+
+
+class DineInOrder(TenantModel):
+    """
+    Customer's dine-in order linked to a TableSession.
+
+    items_snapshot is a denormalized JSON list built at creation time —
+    it never changes even if the menu is edited afterwards.
+
+    Snapshot item format:
+    {
+        "menu_item_id": "<uuid>",
+        "name": "Nyama Choma",
+        "price": "850.00",
+        "quantity": 2,
+        "contains_allergens": false,
+        "modifiers": [
+            {"modifier_id": "<uuid>", "name": "Extra Sauce", "price_addition": "50.00"}
+        ]
+    }
+    """
+
+    STATUS_PENDING = "PENDING"
+    STATUS_CONFIRMED = "CONFIRMED"
+    STATUS_READY = "READY"
+    STATUS_CANCELLED = "CANCELLED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_CONFIRMED, "Confirmed by kitchen"),
+        (STATUS_READY, "Ready for service"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    session = models.ForeignKey(
+        TableSession,
+        on_delete=models.CASCADE,
+        related_name="orders",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    items_snapshot = models.JSONField(
+        help_text="Denormalized list of ordered items captured at creation time.",
+    )
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    placed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-placed_at"]
+        indexes = [
+            models.Index(
+                fields=["store", "status"],
+                name="idx_rst_dineinorder_store_status",
+            ),
+            models.Index(
+                fields=["session"],
+                name="idx_rst_dineinorder_session",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"DineInOrder({self.id}, session={self.session_id}, status={self.status})"
+
+
+class KitchenTicket(TenantModel):
+    """
+    Denormalized kitchen display ticket created alongside a DineInOrder.
+
+    All item, modifier, and waiter data is baked in at creation — the kitchen
+    display query requires no joins beyond the single KitchenTicket table.
+
+    Status lifecycle: PENDING → IN_PROGRESS → COMPLETED | CANCELLED
+    """
+
+    STATUS_PENDING = "PENDING"
+    STATUS_IN_PROGRESS = "IN_PROGRESS"
+    STATUS_COMPLETED = "COMPLETED"
+    STATUS_CANCELLED = "CANCELLED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_IN_PROGRESS, "In Progress"),
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    VALID_TRANSITIONS: dict[str, list[str]] = {
+        STATUS_PENDING: [STATUS_IN_PROGRESS, STATUS_CANCELLED],
+        STATUS_IN_PROGRESS: [STATUS_COMPLETED, STATUS_CANCELLED],
+        STATUS_COMPLETED: [],
+        STATUS_CANCELLED: [],
+    }
+
+    order = models.OneToOneField(
+        DineInOrder,
+        on_delete=models.CASCADE,
+        related_name="ticket",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    # Denormalized fields — copied once at creation, never updated
+    items_snapshot = models.JSONField(
+        help_text="Copy of DineInOrder.items_snapshot at ticket creation time.",
+    )
+    waiter_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Denormalized waiter name from session.assigned_waiter at creation time.",
+    )
+    table_number = models.PositiveSmallIntegerField(
+        help_text="Denormalized table number at creation time.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["store", "status"],
+                name="idx_rst_kitchenticket_store_status",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"KitchenTicket({self.id}, table={self.table_number}, status={self.status})"
+
+    def transition(self, new_status: str) -> None:
+        """Enforce KitchenTicket state machine. Raises InvalidSessionTransition on bad moves."""
+        allowed = self.VALID_TRANSITIONS.get(self.status, [])
+        if new_status not in allowed:
+            raise InvalidSessionTransition(self.status, new_status)
+        self.status = new_status
+        self.save(update_fields=["status"])

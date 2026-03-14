@@ -1,10 +1,21 @@
 """
-Restaurant serializers — Story 3.1 (Menu Management API), Story 3.4 (TableSession).
+Restaurant serializers — Story 3.1, 3.4, 3.6.
 """
+
+from decimal import Decimal
 
 from rest_framework import serializers
 
-from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table, TableSession
+from apps.restaurant.models import (
+    DineInOrder,
+    KitchenTicket,
+    MenuItem,
+    MenuSection,
+    Modifier,
+    ModifierGroup,
+    Table,
+    TableSession,
+)
 
 
 class ModifierSerializer(serializers.ModelSerializer):
@@ -117,3 +128,78 @@ class TableSessionSerializer(serializers.ModelSerializer):
             return None
         user = obj.assigned_waiter
         return user.get_full_name() or user.email
+
+
+# ---------------------------------------------------------------------------
+# Story 3.6 — DineInOrder + KitchenTicket
+# ---------------------------------------------------------------------------
+
+
+class OrderItemInputSerializer(serializers.Serializer):
+    """Validates a single line item in a dine-in order request."""
+
+    menu_item_id = serializers.UUIDField()
+    quantity = serializers.IntegerField(min_value=1, max_value=99)
+    selected_modifier_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=True,
+        default=list,
+    )
+
+
+class DineInOrderCreateSerializer(serializers.Serializer):
+    """Input serializer for POST /api/v1/restaurant/orders/."""
+
+    session_id = serializers.UUIDField()
+    items = serializers.ListField(
+        child=OrderItemInputSerializer(),
+        min_length=1,
+    )
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one item is required.")
+        return value
+
+
+class DineInOrderSerializer(serializers.ModelSerializer):
+    """Output serializer for DineInOrder."""
+
+    ticket_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DineInOrder
+        fields = [
+            "id",
+            "session",
+            "status",
+            "items_snapshot",
+            "total_amount",
+            "placed_at",
+            "ticket_status",
+        ]
+        read_only_fields = fields
+
+    def get_ticket_status(self, obj) -> str | None:
+        # Access via reverse OneToOne — may not be prefetched in all contexts
+        try:
+            return obj.ticket.status
+        except KitchenTicket.DoesNotExist:
+            return None
+
+
+class KitchenTicketSerializer(serializers.ModelSerializer):
+    """Output serializer for kitchen display endpoint."""
+
+    class Meta:
+        model = KitchenTicket
+        fields = [
+            "id",
+            "order",
+            "status",
+            "items_snapshot",
+            "waiter_name",
+            "table_number",
+            "created_at",
+        ]
+        read_only_fields = fields

@@ -26,7 +26,9 @@ from core.pagination import StoreCursorPagination
 from core.views import TenantViewSet
 
 from apps.restaurant.models import (
+    DineInOrder,
     InvalidSessionTransition,
+    KitchenTicket,
     MenuItem,
     MenuSection,
     Modifier,
@@ -36,6 +38,9 @@ from apps.restaurant.models import (
 )
 from apps.restaurant.qr import QRTokenError, generate_qr_token, validate_qr_token
 from apps.restaurant.serializers import (
+    DineInOrderCreateSerializer,
+    DineInOrderSerializer,
+    KitchenTicketSerializer,
     MenuItemSerializer,
     MenuSectionSerializer,
     ModifierGroupSerializer,
@@ -356,6 +361,241 @@ class PublicTableView(APIView):
             "store_id": str(table.store_id),
             "store_name": table.store.name,
             "message": f"This is Table {table.number} at {table.store.name}. Please ask a staff member to scan the correct QR code for you.",
+        })
+
+
+class DineInOrderView(APIView):
+    """
+    Story 3.6 — Place a dine-in order.
+
+    POST /api/v1/restaurant/orders/
+
+    Validates items, builds denormalized items_snapshot in a single prefetch
+    query, calculates total_amount, creates DineInOrder + KitchenTicket atomically.
+    """
+
+    def post(self, request):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+
+        ser = DineInOrderCreateSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response({"errors": ser.errors}, status=400)
+
+        data = ser.validated_data
+
+        # Load session — must be OPEN and belong to this store
+        try:
+            session = (
+                TableSession.objects.select_related("table", "assigned_waiter")
+                .get(id=data["session_id"], store=store, status=TableSession.STATUS_OPEN)
+            )
+        except TableSession.DoesNotExist:
+            return Response(
+                {"errors": [{"code": "SESSION_NOT_FOUND", "message": "No OPEN session found for this store with that ID."}]},
+                status=404,
+            )
+
+        # Collect all requested item + modifier IDs
+        item_ids = [item["menu_item_id"] for item in data["items"]]
+        modifier_ids = [
+            mid
+            for item in data["items"]
+            for mid in item.get("selected_modifier_ids", [])
+        ]
+
+        # Single prefetch query — satisfies AC1 (no more than one join at query time)
+        menu_items = {
+            str(mi.id): mi
+            for mi in MenuItem.objects.filter(
+                id__in=item_ids, store=store, is_available=True
+            ).prefetch_related("modifier_groups__modifiers")
+        }
+
+        modifiers_by_id = {}
+        for mi in menu_items.values():
+            for grp in mi.modifier_groups.all():
+                for mod in grp.modifiers.all():
+                    modifiers_by_id[str(mod.id)] = mod
+
+        # Validate all requested IDs exist
+        missing_items = [str(iid) for iid in item_ids if str(iid) not in menu_items]
+        if missing_items:
+            return Response(
+                {"errors": [{"code": "ITEM_NOT_FOUND", "message": f"Items not found or unavailable: {missing_items}"}]},
+                status=400,
+            )
+
+        missing_mods = [str(mid) for mid in modifier_ids if str(mid) not in modifiers_by_id]
+        if missing_mods:
+            return Response(
+                {"errors": [{"code": "MODIFIER_NOT_FOUND", "message": f"Modifiers not found: {missing_mods}"}]},
+                status=400,
+            )
+
+        # Build denormalized snapshot
+        from decimal import Decimal
+
+        items_snapshot = []
+        total_amount = Decimal("0.00")
+
+        for item_input in data["items"]:
+            mi = menu_items[str(item_input["menu_item_id"])]
+            qty = item_input["quantity"]
+            selected_modifiers = [
+                modifiers_by_id[str(mid)]
+                for mid in item_input.get("selected_modifier_ids", [])
+            ]
+            mod_total = sum(m.price_addition for m in selected_modifiers)
+            line_total = (mi.price + mod_total) * qty
+            total_amount += line_total
+
+            items_snapshot.append({
+                "menu_item_id": str(mi.id),
+                "name": mi.name,
+                "price": str(mi.price),
+                "quantity": qty,
+                "contains_allergens": mi.contains_allergens,
+                "modifiers": [
+                    {
+                        "modifier_id": str(m.id),
+                        "name": m.name,
+                        "price_addition": str(m.price_addition),
+                    }
+                    for m in selected_modifiers
+                ],
+            })
+
+        # Denormalize waiter name
+        waiter_name = ""
+        if session.assigned_waiter_id:
+            w = session.assigned_waiter
+            waiter_name = w.get_full_name() or w.email
+
+        # Atomic create: DineInOrder + KitchenTicket
+        from django.db import transaction
+
+        with transaction.atomic():
+            order = DineInOrder.objects.create(
+                store=store,
+                session=session,
+                items_snapshot=items_snapshot,
+                total_amount=total_amount,
+            )
+            KitchenTicket.objects.create(
+                store=store,
+                order=order,
+                items_snapshot=items_snapshot,
+                waiter_name=waiter_name,
+                table_number=session.table.number,
+            )
+
+        log.info(
+            "dineinorder_created",
+            order_id=str(order.id),
+            session_id=str(session.id),
+            total=str(total_amount),
+        )
+        return Response(DineInOrderSerializer(order).data, status=201)
+
+
+class KitchenTicketListView(APIView):
+    """
+    Story 3.6 — Kitchen display endpoint.
+
+    GET /api/v1/restaurant/kitchen/tickets/
+
+    Returns only PENDING and IN_PROGRESS tickets for the resolved store.
+    All ticket data is fully denormalized — zero joins needed.
+    Target response time: < 50ms.
+    """
+
+    def get(self, request):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+
+        tickets = KitchenTicket.objects.filter(
+            store=store,
+            status__in=[KitchenTicket.STATUS_PENDING, KitchenTicket.STATUS_IN_PROGRESS],
+        ).only("id", "order_id", "status", "items_snapshot", "waiter_name", "table_number", "created_at")
+
+        return Response({"data": KitchenTicketSerializer(tickets, many=True).data})
+
+
+class KitchenTicketUpdateView(APIView):
+    """
+    Story 3.6 — Update kitchen ticket status.
+
+    PATCH /api/v1/restaurant/kitchen/tickets/{ticket_id}/
+    Body: {"status": "IN_PROGRESS" | "COMPLETED" | "CANCELLED"}
+    """
+
+    def patch(self, request, ticket_id):
+        store = getattr(request, "store", None)
+        try:
+            ticket = KitchenTicket.objects.get(id=ticket_id, store=store)
+        except KitchenTicket.DoesNotExist:
+            return Response(status=404)
+
+        new_status = request.data.get("status")
+        if not new_status:
+            return Response({"errors": [{"code": "STATUS_REQUIRED"}]}, status=400)
+
+        try:
+            ticket.transition(new_status)
+        except InvalidSessionTransition as exc:
+            return Response(
+                {"errors": [{"code": "INVALID_TICKET_TRANSITION", "message": str(exc)}]},
+                status=422,
+            )
+
+        # Mirror status on the DineInOrder for Story 3.6b
+        status_map = {
+            KitchenTicket.STATUS_IN_PROGRESS: DineInOrder.STATUS_CONFIRMED,
+            KitchenTicket.STATUS_COMPLETED: DineInOrder.STATUS_READY,
+            KitchenTicket.STATUS_CANCELLED: DineInOrder.STATUS_CANCELLED,
+        }
+        if new_status in status_map:
+            DineInOrder.objects.filter(id=ticket.order_id).update(status=status_map[new_status])
+
+        log.info("kitchen_ticket_updated", ticket_id=str(ticket.id), status=new_status)
+        return Response(KitchenTicketSerializer(ticket).data)
+
+
+class OrderStatusView(APIView):
+    """
+    Story 3.6b — Customer order status polling endpoint.
+
+    GET /api/v1/restaurant/orders/{order_id}/status/
+
+    Returns DineInOrder status + KitchenTicket status. Used by TanStack Query
+    on the customer confirmation screen (refetchInterval: 10000ms).
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, order_id):
+        try:
+            order = DineInOrder.objects.select_related("session__table", "ticket").get(id=order_id)
+        except DineInOrder.DoesNotExist:
+            return Response(status=404)
+
+        ticket_status = None
+        try:
+            ticket_status = order.ticket.status
+        except KitchenTicket.DoesNotExist:
+            pass
+
+        return Response({
+            "order_id": str(order.id),
+            "order_status": order.status,
+            "ticket_status": ticket_status,
+            "table_number": order.session.table.number,
+            "total_amount": str(order.total_amount),
+            "items_snapshot": order.items_snapshot,
+            "placed_at": order.placed_at.isoformat(),
         })
 
 
