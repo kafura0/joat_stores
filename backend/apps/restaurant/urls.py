@@ -22,6 +22,7 @@ from apps.restaurant.views import (
     PublicMenuView,
     QRTokenGenerateView,
     QRTokenValidateView,
+    ReservationViewSet,
     TableSessionViewSet,
     TableViewSet,
 )
@@ -33,6 +34,7 @@ router.register(r"modifier-groups", ModifierGroupViewSet, basename="modifier-gro
 router.register(r"modifiers", ModifierViewSet, basename="modifiers")
 router.register(r"tables", TableViewSet, basename="tables")
 router.register(r"sessions", TableSessionViewSet, basename="sessions")
+router.register(r"reservations", ReservationViewSet, basename="reservations")
 
 urlpatterns = router.urls + [
     path("public-menu/", PublicMenuView.as_view(), name="public-menu"),

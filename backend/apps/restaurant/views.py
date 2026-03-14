@@ -34,6 +34,7 @@ from apps.restaurant.models import (
     Modifier,
     ModifierGroup,
     PendingOrder,
+    Reservation,
     Table,
     TableSession,
 )
@@ -49,6 +50,7 @@ from apps.restaurant.serializers import (
     PendingOrderCreateSerializer,
     PendingOrderLookupSerializer,
     PendingOrderSerializer,
+    ReservationSerializer,
     TableSessionSerializer,
 )
 
@@ -865,6 +867,116 @@ class PendingOrderConvertView(APIView):
             paid=payment_txn is not None,
         )
         return Response(DineInOrderSerializer(order).data, status=201)
+
+
+class ReservationViewSet(TenantViewSet):
+    """
+    Story 3.9 — Reservation management.
+
+    POST   /api/v1/restaurant/reservations/          → create (dispatches notification)
+    GET    /api/v1/restaurant/reservations/{id}/     → retrieve
+    PATCH  /api/v1/restaurant/reservations/{id}/confirm/   → PENDING→CONFIRMED
+    PATCH  /api/v1/restaurant/reservations/{id}/seat/      → CONFIRMED→SEATED + TableSession
+    PATCH  /api/v1/restaurant/reservations/{id}/no-show/   → CONFIRMED→NO_SHOW
+    """
+
+    serializer_class = ReservationSerializer
+    queryset = Reservation.objects.select_related("table", "session")
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    class _Pagination(StoreCursorPagination):
+        ordering = "reserved_for"
+
+    pagination_class = _Pagination
+
+    def perform_create(self, serializer):
+        reservation = serializer.save(store=self.request.store)
+        # Dispatch notification within 60s (Story 3.9 AC1)
+        from apps.restaurant.tasks import send_reservation_notification
+
+        send_reservation_notification.apply_async(
+            args=[str(reservation.id), "created"],
+            countdown=0,
+        )
+        log.info("reservation_created", reservation_id=str(reservation.id))
+
+    def update(self, request, *args, **kwargs):
+        return Response(
+            {"errors": [{"code": "METHOD_NOT_ALLOWED", "message": "Use /confirm/, /seat/, or /no-show/ actions."}]},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    @action(detail=True, methods=["patch"], url_path="confirm")
+    def confirm(self, request, pk=None):
+        """PENDING → CONFIRMED."""
+        reservation = self.get_object()
+        try:
+            reservation.transition(Reservation.STATUS_CONFIRMED)
+        except InvalidSessionTransition as exc:
+            return Response(
+                {"errors": [{"code": "INVALID_RESERVATION_TRANSITION", "message": str(exc)}]},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        from apps.restaurant.tasks import send_reservation_notification
+        send_reservation_notification.apply_async(args=[str(reservation.id), "confirmed"], countdown=0)
+        log.info("reservation_confirmed", reservation_id=str(reservation.id))
+        return Response(ReservationSerializer(reservation, context={"request": request}).data)
+
+    @action(detail=True, methods=["patch"], url_path="seat")
+    def seat(self, request, pk=None):
+        """CONFIRMED → SEATED + auto-create TableSession for the reserved table."""
+        reservation = self.get_object()
+
+        if reservation.table is None:
+            return Response(
+                {"errors": [{"code": "TABLE_NOT_ASSIGNED", "message": "Assign a table to the reservation before seating."}]},
+                status=400,
+            )
+
+        try:
+            reservation.transition(Reservation.STATUS_SEATED)
+        except InvalidSessionTransition as exc:
+            return Response(
+                {"errors": [{"code": "INVALID_RESERVATION_TRANSITION", "message": str(exc)}]},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        # Auto-create OPEN TableSession (DB enforces uniqueness)
+        try:
+            session = TableSession.objects.create(
+                store=reservation.store,
+                table=reservation.table,
+                status=TableSession.STATUS_OPEN,
+            )
+            reservation.session = session
+            reservation.save(update_fields=["session"])
+        except Exception:
+            from django.db import IntegrityError as _IntegrityError
+            return Response(
+                {"errors": [{"code": "DUPLICATE_SESSION", "message": "An OPEN session already exists for this table."}]},
+                status=409,
+            )
+
+        from apps.restaurant.tasks import send_reservation_notification
+        send_reservation_notification.apply_async(args=[str(reservation.id), "seated"], countdown=0)
+        log.info("reservation_seated", reservation_id=str(reservation.id), session_id=str(session.id))
+        return Response(ReservationSerializer(reservation, context={"request": request}).data)
+
+    @action(detail=True, methods=["patch"], url_path="no-show")
+    def no_show(self, request, pk=None):
+        """CONFIRMED → NO_SHOW."""
+        reservation = self.get_object()
+        try:
+            reservation.transition(Reservation.STATUS_NO_SHOW)
+        except InvalidSessionTransition as exc:
+            return Response(
+                {"errors": [{"code": "INVALID_RESERVATION_TRANSITION", "message": str(exc)}]},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        from apps.restaurant.tasks import send_reservation_notification
+        send_reservation_notification.apply_async(args=[str(reservation.id), "no_show"], countdown=0)
+        log.info("reservation_no_show", reservation_id=str(reservation.id))
+        return Response(ReservationSerializer(reservation, context={"request": request}).data)
 
 
 class PublicMenuView(APIView):

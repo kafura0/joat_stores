@@ -6,6 +6,7 @@ Story 3.3: Table
 Story 3.4: TableSession
 Story 3.6: DineInOrder, KitchenTicket
 Story 3.7: PendingOrder
+Story 3.9: Reservation
 
 All models inherit TenantModel (UUID PK, store FK, soft-delete, TenantQuerySet).
 """
@@ -562,3 +563,96 @@ class PendingOrder(TenantModel):
 
     def __str__(self) -> str:
         return f"PendingOrder({self.id}, pin={self.pin}, status={self.status})"
+
+
+# ---------------------------------------------------------------------------
+# Story 3.9 — Reservation
+# ---------------------------------------------------------------------------
+
+
+class Reservation(TenantModel):
+    """
+    Table reservation: customer books a time slot + party size, receives confirmation.
+
+    State machine (via .transition()):
+        PENDING → CONFIRMED → SEATED | NO_SHOW
+
+    On SEATED, a TableSession is auto-created for the reserved table.
+    """
+
+    STATUS_PENDING = "PENDING"
+    STATUS_CONFIRMED = "CONFIRMED"
+    STATUS_SEATED = "SEATED"
+    STATUS_NO_SHOW = "NO_SHOW"
+    STATUS_CANCELLED = "CANCELLED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_CONFIRMED, "Confirmed"),
+        (STATUS_SEATED, "Seated"),
+        (STATUS_NO_SHOW, "No Show"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    VALID_TRANSITIONS: dict[str, list[str]] = {
+        STATUS_PENDING: [STATUS_CONFIRMED, STATUS_CANCELLED],
+        STATUS_CONFIRMED: [STATUS_SEATED, STATUS_NO_SHOW, STATUS_CANCELLED],
+        STATUS_SEATED: [],
+        STATUS_NO_SHOW: [],
+        STATUS_CANCELLED: [],
+    }
+
+    customer_phone = models.CharField(max_length=20)
+    customer_name = models.CharField(max_length=200, blank=True, default="")
+    table = models.ForeignKey(
+        Table,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reservations",
+        help_text="Specific table reserved. May be assigned at confirmation.",
+    )
+    party_size = models.PositiveSmallIntegerField()
+    reserved_for = models.DateTimeField(
+        help_text="Requested time slot for the reservation.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    notes = models.TextField(blank=True, default="")
+    # Auto-linked when status transitions to SEATED
+    session = models.OneToOneField(
+        TableSession,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reservation",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["reserved_for"]
+        indexes = [
+            models.Index(
+                fields=["store", "status"],
+                name="idx_rst_reservation_store_status",
+            ),
+            models.Index(
+                fields=["store", "reserved_for"],
+                name="idx_rst_reservation_store_time",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Reservation({self.id}, phone={self.customer_phone}, status={self.status}, for={self.reserved_for})"
+
+    def transition(self, new_status: str) -> None:
+        """Enforce state machine. Raises InvalidSessionTransition on bad moves."""
+        allowed = self.VALID_TRANSITIONS.get(self.status, [])
+        if new_status not in allowed:
+            raise InvalidSessionTransition(self.status, new_status)
+        self.status = new_status
+        self.save(update_fields=["status"])

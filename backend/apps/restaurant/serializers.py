@@ -14,6 +14,7 @@ from apps.restaurant.models import (
     Modifier,
     ModifierGroup,
     PendingOrder,
+    Reservation,
     Table,
     TableSession,
 )
@@ -254,3 +255,26 @@ class PendingOrderLookupSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+
+# ---------------------------------------------------------------------------
+# Story 3.9 — Reservation
+# ---------------------------------------------------------------------------
+
+
+class ReservationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reservation
+        fields = [
+            "id",
+            "customer_phone",
+            "customer_name",
+            "table",
+            "party_size",
+            "reserved_for",
+            "status",
+            "notes",
+            "session",
+            "created_at",
+        ]
+        read_only_fields = ["id", "status", "session", "created_at"]

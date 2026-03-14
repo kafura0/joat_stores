@@ -83,7 +83,7 @@ development_status:
   3-6b-customer-dine-in-order-confirmation-live-status-screen: done
   3-7-pendingorder-waiter-convert-screen: done
   3-8-pre-order-advance-payment: done
-  3-9-reservation-model: backlog
+  3-9-reservation-model: done
   3-10-takeaway-order-type: backlog
   3-11-restaurant-bill-payment-split-bill: backlog
   3-12-fr4-cross-epic-tenant-type-lock-test: backlog
