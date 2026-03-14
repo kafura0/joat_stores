@@ -183,6 +183,116 @@ class TokenRefreshView(APIView):
             pass  # can't decode — nothing to invalidate
 
 
+class GoogleOAuthCallbackView(APIView):
+    """
+    Story 4.5 — Google OAuth2 PKCE callback.
+
+    POST /api/v1/auth/google/callback/
+    Body: {"code": "<auth_code>", "redirect_uri": "<pkce_redirect>"}
+
+    Flow:
+    1. Exchange code for Google access token
+    2. Fetch user profile from Google UserInfo
+    3. get_or_create store-scoped User with role=CUSTOMER + store from request.store
+    4. Return JWT (access in body, refresh in httpOnly cookie)
+
+    Same Google account at two different stores = two separate User records
+    (email + store compound uniqueness).
+    """
+
+    permission_classes = [AllowAny]
+
+    _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+    _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+    def post(self, request):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+
+        code = request.data.get("code", "").strip()
+        redirect_uri = request.data.get("redirect_uri", "").strip()
+        if not code or not redirect_uri:
+            return Response({"errors": [{"code": "CODE_AND_REDIRECT_URI_REQUIRED"}]}, status=400)
+
+        import requests as http_requests
+
+        from django.conf import settings as django_settings
+
+        client_id = getattr(django_settings, "GOOGLE_OAUTH_CLIENT_ID", "")
+        client_secret = getattr(django_settings, "GOOGLE_OAUTH_CLIENT_SECRET", "")
+
+        # Exchange authorization code for Google access token
+        try:
+            token_resp = http_requests.post(self._GOOGLE_TOKEN_URL, data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            }, timeout=10)
+            token_resp.raise_for_status()
+            google_access_token = token_resp.json().get("access_token")
+        except Exception as exc:
+            return Response(
+                {"errors": [{"code": "GOOGLE_TOKEN_EXCHANGE_FAILED", "message": str(exc)}]},
+                status=502,
+            )
+
+        # Fetch user profile
+        try:
+            userinfo_resp = http_requests.get(
+                self._GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {google_access_token}"},
+                timeout=10,
+            )
+            userinfo_resp.raise_for_status()
+            profile = userinfo_resp.json()
+        except Exception as exc:
+            return Response(
+                {"errors": [{"code": "GOOGLE_USERINFO_FAILED", "message": str(exc)}]},
+                status=502,
+            )
+
+        email = profile.get("email", "").lower()
+        name = profile.get("name", "")
+        if not email:
+            return Response({"errors": [{"code": "EMAIL_NOT_PROVIDED_BY_GOOGLE"}]}, status=400)
+
+        # get_or_create store-scoped customer account
+        from apps.users.models import User
+
+        user, created = User.objects.get_or_create(
+            email=email,
+            store=store,
+            defaults={
+                "first_name": name.split(" ")[0] if name else "",
+                "last_name": " ".join(name.split(" ")[1:]) if name else "",
+                "role": User.Role.CUSTOMER,
+                "is_active": True,
+            },
+        )
+
+        # Issue JWT
+        from apps.users.serializers import StoreTokenObtainPairSerializer
+
+        refresh = StoreTokenObtainPairSerializer.get_token(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        response = Response({
+            "data": {
+                "access": access_token,
+                "user_id": str(user.id),
+                "email": user.email,
+                "name": user.get_full_name() or user.email,
+                "created": created,
+            }
+        })
+        response.set_cookie(value=refresh_token, **REFRESH_COOKIE_SETTINGS)
+        return response
+
+
 class LogoutAllView(APIView):
     """
     POST /api/v1/auth/logout-all/

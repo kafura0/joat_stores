@@ -83,6 +83,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    # Story 4.9 — in-app browser detection (WhatsApp, Facebook, Instagram, Line)
+    "core.middleware.InAppBrowserMiddleware",
 ]
 
 # ---------------------------------------------------------------------------
@@ -320,9 +322,15 @@ MPESA_INITIATOR_NAME = env("MPESA_INITIATOR_NAME", default="")
 MPESA_SECURITY_CREDENTIAL = env("MPESA_SECURITY_CREDENTIAL", default="")
 
 # ---------------------------------------------------------------------------
-# QR Token (Story 3.3)
+# QR Token (Story 3.3, 4.1)
 # ---------------------------------------------------------------------------
 HMAC_QR_SECRET = env("HMAC_QR_SECRET", default="dev-qr-secret-change-in-prod")
+
+# ---------------------------------------------------------------------------
+# Google OAuth2 PKCE (Story 4.5)
+# ---------------------------------------------------------------------------
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
+GOOGLE_OAUTH_CLIENT_SECRET = env("GOOGLE_OAUTH_CLIENT_SECRET", default="")
 
 # ---------------------------------------------------------------------------
 # CORS

@@ -10,7 +10,7 @@ Implementation: Story 1.5
 
 from django.urls import path
 
-from apps.users.views import LogoutAllView, TokenObtainView, TokenRefreshView
+from apps.users.views import GoogleOAuthCallbackView, LogoutAllView, TokenObtainView, TokenRefreshView
 
 app_name = "users"
 
@@ -22,4 +22,6 @@ urlpatterns = [
         name="token-refresh",
     ),
     path("logout-all/", LogoutAllView.as_view(), name="logout-all"),
+    # Story 4.5 — Google OAuth2 PKCE callback
+    path("google/callback/", GoogleOAuthCallbackView.as_view(), name="google-callback"),
 ]

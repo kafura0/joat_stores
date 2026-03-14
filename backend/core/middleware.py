@@ -115,3 +115,41 @@ class TenantMiddleware(MiddlewareMixin):
         # 7. Set store on request
         request.store = store
         return None
+
+
+# ---------------------------------------------------------------------------
+# Story 4.9 — In-App Browser Detection
+# ---------------------------------------------------------------------------
+
+_IN_APP_BROWSER_PATTERNS = (
+    # WhatsApp
+    "WhatsApp",
+    # Facebook
+    "FBAN", "FBAV", "FB_IAB",
+    # Instagram
+    "Instagram",
+    # Line
+    "Line",
+)
+
+
+class InAppBrowserMiddleware(MiddlewareMixin):
+    """
+    Story 4.9 — Server-side in-app browser detection.
+
+    Detects WhatsApp, Facebook, Instagram, and Line in-app browsers from
+    the User-Agent header.  Adds `X-In-App-Browser: true` response header
+    when detected — the storefront React client reads this and renders
+    the "Open in Chrome/Safari" banner + cart fallback.
+
+    Detection order (server-side first, then client-side UA sniff as fallback).
+    """
+
+    def process_request(self, request):
+        ua = request.META.get("HTTP_USER_AGENT", "")
+        request.is_in_app_browser = any(pattern in ua for pattern in _IN_APP_BROWSER_PATTERNS)
+
+    def process_response(self, request, response):
+        if getattr(request, "is_in_app_browser", False):
+            response["X-In-App-Browser"] = "true"
+        return response

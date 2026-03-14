@@ -92,23 +92,23 @@ development_status:
   # =============================================================================
   # EPIC 4: Retail Store Commerce
   # =============================================================================
-  epic-4: in-progress
+  epic-4: done
   4-1-product-catalog-categories-variants-inventory-images: done
   4-2-redis-cart-30-day-ttl-guest-auth: done
   4-3-order-lifecycle-state-machine: done
   4-3b-merchant-daily-view-zero-navigation-dashboard: done
   4-4-guest-checkout-mpesa-payment: done
-  4-5-google-oauth2-pkce-authenticated-checkout: backlog
-  4-6-order-confirmation-email-low-stock-alerts: backlog
-  4-7-card-payment-scaffold: backlog
-  4-8-post-payment-browser-recovery: backlog
-  4-9-in-app-browser-detection-cart-fallback: backlog
+  4-5-google-oauth2-pkce-authenticated-checkout: done
+  4-6-order-confirmation-email-low-stock-alerts: done
+  4-7-card-payment-scaffold: done
+  4-8-post-payment-browser-recovery: done
+  4-9-in-app-browser-detection-cart-fallback: done
   epic-4-retrospective: optional
 
   # =============================================================================
   # EPIC 5: Bar Tab Management
   # =============================================================================
-  epic-5: backlog
+  epic-5: in-progress
   5-1-bar-tenant-type-activation-tab-state-machine: backlog
   5-2-round-ordering-on-open-tab: backlog
   5-3-age-restricted-items-agerestrictionlog: backlog

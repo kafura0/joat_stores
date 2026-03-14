@@ -1,6 +1,6 @@
 """Payment views.
 
-Implementation: Story 2.2, Story 2.3, Story 2.5
+Implementation: Story 2.2, Story 2.3, Story 2.5, Story 4.7
 """
 
 import hashlib
@@ -158,4 +158,29 @@ class ReversePaymentView(APIView):
         return Response(
             {"status": "reversal_queued", "transaction_id": str(txn.id)},
             status=202,
+        )
+
+
+class CardPaymentScaffoldView(APIView):
+    """
+    Story 4.7 — Card payment scaffold (Stripe + Flutterwave).
+
+    POST /api/v1/payments/card/initiate/
+    Body: {"provider": "stripe" | "flutterwave", ...}
+
+    Returns HTTP 501 — card payments are scaffolded but not yet live.
+    Endpoints appear in OpenAPI schema with 501 response documented.
+    Activation requires only provider implementation, no URL changes.
+    """
+
+    def post(self, request):
+        provider = request.data.get("provider", "").lower()
+        if provider not in ("stripe", "flutterwave"):
+            return Response(
+                {"errors": [{"code": "INVALID_PROVIDER", "message": "Use 'stripe' or 'flutterwave'."}]},
+                status=400,
+            )
+        return Response(
+            {"detail": "CARD_PAYMENT_NOT_LIVE"},
+            status=501,
         )
