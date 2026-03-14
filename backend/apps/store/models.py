@@ -155,6 +155,7 @@ class StoreSettings(TenantModel):
     Per-store configuration settings.
 
     Story 1.7 adds: tagline, logo_url.
+    Story 4.1 adds: low_stock_threshold.
     """
 
     tagline = models.CharField(
@@ -167,6 +168,10 @@ class StoreSettings(TenantModel):
         blank=True,
         default="",
         help_text="Absolute URL to the store's WebP logo.",
+    )
+    low_stock_threshold = models.IntegerField(
+        default=5,
+        help_text="Variant inventory_count at or below which a low-stock alert fires.",
     )
 
     class Meta:

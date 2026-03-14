@@ -25,6 +25,7 @@ sentry-sdk[django]==2.*
 
 # Media
 Pillow==11.*
+qrcode[pil]==8.*
 
 # Utilities
 psycopg2-binary==2.9.*
