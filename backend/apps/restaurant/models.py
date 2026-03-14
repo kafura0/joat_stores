@@ -1,12 +1,8 @@
 """
-Restaurant domain models — Story 3.1 (Menu Management API).
+Restaurant domain models.
 
-Models:
-  MenuSection  — ordered grouping of MenuItems (e.g. "Starters", "Mains")
-  MenuItem     — individual dish with price, allergen flag, time-based availability
-  ModifierGroup — a set of options for a MenuItem (e.g. "Choose sauce"), with
-                   min/max selection rules
-  Modifier      — individual option within a ModifierGroup, with optional price addition
+Story 3.1: MenuSection, MenuItem, ModifierGroup, Modifier
+Story 3.3: Table
 
 All models inherit TenantModel (UUID PK, store FK, soft-delete, TenantQuerySet).
 """
@@ -173,3 +169,35 @@ class Modifier(TenantModel):
 
     def __str__(self) -> str:
         return self.name
+
+
+class Table(TenantModel):
+    """Physical table in a restaurant. QR codes link to a specific table."""
+
+    number = models.PositiveSmallIntegerField(
+        help_text="Table number visible to staff/customers.",
+    )
+    name = models.CharField(
+        max_length=50, blank=True, default="",
+        help_text="Optional friendly name (e.g. 'Window Table').",
+    )
+    capacity = models.PositiveSmallIntegerField(default=2)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["store", "number"],
+                name="uq_restaurant_table_store_number",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["store", "is_active"],
+                name="idx_rst_table_store_active",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Table {self.number}"

@@ -4,7 +4,7 @@ Restaurant serializers — Story 3.1 (Menu Management API).
 
 from rest_framework import serializers
 
-from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup
+from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table
 
 
 class ModifierSerializer(serializers.ModelSerializer):
@@ -70,5 +70,18 @@ class MenuSectionSerializer(serializers.ModelSerializer):
             "description",
             "position",
             "items",
+        ]
+        read_only_fields = ["id"]
+
+
+class TableSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Table
+        fields = [
+            "id",
+            "number",
+            "name",
+            "capacity",
+            "is_active",
         ]
         read_only_fields = ["id"]

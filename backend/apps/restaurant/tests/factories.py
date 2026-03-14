@@ -5,7 +5,7 @@ Factory-boy factories for restaurant domain — Story 3.1.
 import factory
 from factory.django import DjangoModelFactory
 
-from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup
+from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table
 from apps.store.tests.factories import StoreFactory
 
 
@@ -57,3 +57,14 @@ class ModifierFactory(DjangoModelFactory):
     name = factory.Sequence(lambda n: f"Modifier {n}")
     price_addition = "0.00"
     is_available = True
+
+
+class TableFactory(DjangoModelFactory):
+    class Meta:
+        model = Table
+
+    store = factory.SubFactory(StoreFactory)
+    number = factory.Sequence(lambda n: n + 1)
+    name = ""
+    capacity = 4
+    is_active = True

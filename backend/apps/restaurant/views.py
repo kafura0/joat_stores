@@ -15,10 +15,13 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.conf import settings
+
 from core.pagination import StoreCursorPagination
 from core.views import TenantViewSet
 
-from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup
+from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table
+from apps.restaurant.qr import QRTokenError, generate_qr_token, validate_qr_token
 from apps.restaurant.serializers import (
     MenuItemSerializer,
     MenuSectionSerializer,
@@ -114,6 +117,93 @@ class ModifierViewSet(TenantViewSet):
         ordering = "name"
 
     pagination_class = _Pagination
+
+
+class TableViewSet(TenantViewSet):
+    """CRUD for restaurant tables — Story 3.3."""
+
+    from apps.restaurant.serializers import TableSerializer as _Ser
+
+    serializer_class = _Ser
+    queryset = Table.objects.all()
+
+    class _Pagination(StoreCursorPagination):
+        ordering = "number"
+
+    pagination_class = _Pagination
+
+
+class QRTokenGenerateView(APIView):
+    """
+    Story 3.3 — Generate a signed QR token for a table.
+
+    POST /api/v1/restaurant/tables/{id}/qr-token/
+    """
+
+    def post(self, request, table_id):
+        try:
+            table = Table.objects.get(id=table_id, store=request.store)
+        except Table.DoesNotExist:
+            return Response(status=404)
+
+        secret = getattr(settings, "HMAC_QR_SECRET", "dev-qr-secret")
+        token = generate_qr_token(
+            store_id=str(table.store_id),
+            table_id=str(table.id),
+            secret=secret,
+        )
+        log.info("qr_token_generated", table_id=str(table.id))
+        return Response({"token": token, "table_number": table.number})
+
+
+class QRTokenValidateView(APIView):
+    """
+    Story 3.3 — Validate a QR token.
+
+    GET /api/v1/restaurant/qr/validate/?token=<token>
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get("token", "")
+        if not token:
+            return Response(
+                {"errors": [{"code": "INVALID_QR_TOKEN", "message": "token required"}]},
+                status=400,
+            )
+
+        from django_redis import get_redis_connection
+
+        redis_client = get_redis_connection("default")
+        secret = getattr(settings, "HMAC_QR_SECRET", "dev-qr-secret")
+
+        try:
+            payload = validate_qr_token(token, secret, redis_client)
+        except QRTokenError as exc:
+            return Response(
+                {"errors": [{"code": exc.code, "message": str(exc)}]},
+                status=400,
+            )
+
+        # Load table and store details
+        try:
+            table = Table.objects.select_related("store").get(
+                id=payload["table_id"],
+                store_id=payload["store_id"],
+            )
+        except Table.DoesNotExist:
+            return Response(
+                {"errors": [{"code": "INVALID_QR_TOKEN", "message": "Table not found"}]},
+                status=400,
+            )
+
+        return Response({
+            "table_id": str(table.id),
+            "table_number": table.number,
+            "store_id": str(table.store_id),
+            "store_name": table.store.name,
+        })
 
 
 class PublicMenuView(APIView):
