@@ -115,3 +115,84 @@ def send_reservation_notification(self, reservation_id: str, event: str):
     )
 
     return {"sent": True, "event": event, "phone": reservation.customer_phone}
+
+
+@shared_task(
+    bind=True,
+    queue="notifications",
+    max_retries=3,
+    default_retry_delay=30,
+    name="apps.restaurant.tasks.send_takeaway_pickup_reference",
+)
+def send_takeaway_pickup_reference(self, order_id: str):
+    """
+    Story 3.10 — Generate TKW-XXXX pickup reference and notify customer.
+
+    Called by the payment_confirmed signal handler after advance payment for a
+    takeaway order is confirmed. Generates a sequential store-scoped reference
+    and stubs the WhatsApp/SMS notification (Story 10.3 replaces the stub).
+    """
+    from apps.restaurant.models import DineInOrder
+
+    try:
+        order = DineInOrder.objects.select_related("store").get(
+            id=order_id,
+            order_type=DineInOrder.ORDER_TYPE_TAKEAWAY,
+        )
+    except DineInOrder.DoesNotExist:
+        log.error("takeaway_ref_order_not_found", order_id=order_id)
+        return
+
+    if order.pickup_reference:
+        # Idempotent: already generated (e.g. task retried)
+        log.info("takeaway_ref_already_set", order_id=order_id, ref=order.pickup_reference)
+        return
+
+    # Generate store-scoped sequential reference: TKW-NNNN
+    count = DineInOrder.objects.filter(
+        store=order.store,
+        order_type=DineInOrder.ORDER_TYPE_TAKEAWAY,
+    ).count()
+    ref = f"TKW-{count:04d}"
+
+    order.pickup_reference = ref
+    order.save(update_fields=["pickup_reference"])
+
+    # TODO (Story 10.3): Send WhatsApp/SMS to customer phone
+    log.info(
+        "takeaway_pickup_reference_generated",
+        order_id=order_id,
+        ref=ref,
+        store_id=str(order.store_id),
+    )
+
+    return {"order_id": order_id, "pickup_reference": ref}
+
+
+@shared_task(
+    bind=True,
+    queue="notifications",
+    max_retries=3,
+    default_retry_delay=30,
+    name="apps.restaurant.tasks.notify_takeaway_ready",
+)
+def notify_takeaway_ready(self, order_id: str):
+    """
+    Story 3.10 — Notify customer when takeaway order status → READY.
+
+    TODO (Story 10.3): Replace with real WhatsApp/SMS dispatch.
+    """
+    from apps.restaurant.models import DineInOrder
+
+    try:
+        order = DineInOrder.objects.select_related("store").get(id=order_id)
+    except DineInOrder.DoesNotExist:
+        return
+
+    log.info(
+        "takeaway_ready_notification_stub",
+        order_id=order_id,
+        pickup_reference=order.pickup_reference,
+        store=order.store.name,
+    )
+    return {"notified": True}

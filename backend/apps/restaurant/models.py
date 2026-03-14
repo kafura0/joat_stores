@@ -349,8 +349,11 @@ class DineInOrder(TenantModel):
 
     session = models.ForeignKey(
         TableSession,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="orders",
+        help_text="Null for takeaway orders — no table session required.",
     )
     status = models.CharField(
         max_length=20,
@@ -366,6 +369,27 @@ class DineInOrder(TenantModel):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.00"))],
     )
+    ORDER_TYPE_DINE_IN = "dine_in"
+    ORDER_TYPE_TAKEAWAY = "takeaway"
+    ORDER_TYPE_CHOICES = [
+        (ORDER_TYPE_DINE_IN, "Dine In"),
+        (ORDER_TYPE_TAKEAWAY, "Takeaway"),
+    ]
+
+    order_type = models.CharField(
+        max_length=20,
+        choices=ORDER_TYPE_CHOICES,
+        default=ORDER_TYPE_DINE_IN,
+        db_index=True,
+    )
+    # Populated for takeaway orders after payment is confirmed (e.g. "TKW-0042")
+    pickup_reference = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Unique pickup reference for takeaway orders.",
+    )
+
     placed_at = models.DateTimeField(auto_now_add=True)
     # Linked on conversion from PendingOrder (Story 3.8) or after payment confirmation
     payment_transaction = models.ForeignKey(

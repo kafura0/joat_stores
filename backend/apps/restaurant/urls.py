@@ -25,6 +25,8 @@ from apps.restaurant.views import (
     ReservationViewSet,
     TableSessionViewSet,
     TableViewSet,
+    TakeawayOrderPayView,
+    TakeawayOrderView,
 )
 
 router = DefaultRouter()
@@ -45,6 +47,8 @@ urlpatterns = router.urls + [
     ),
     path("qr/validate/", QRTokenValidateView.as_view(), name="qr-validate"),
     # Story 3.6 — dine-in orders + kitchen display
+    path("orders/takeaway/", TakeawayOrderView.as_view(), name="takeaway-orders"),
+    path("orders/takeaway/<uuid:order_id>/pay/", TakeawayOrderPayView.as_view(), name="takeaway-orders-pay"),
     path("orders/", DineInOrderView.as_view(), name="dinein-orders"),
     path("orders/<uuid:order_id>/status/", OrderStatusView.as_view(), name="order-status"),
     path("kitchen/tickets/", KitchenTicketListView.as_view(), name="kitchen-tickets"),

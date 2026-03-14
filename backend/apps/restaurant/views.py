@@ -370,6 +370,166 @@ class PublicTableView(APIView):
         })
 
 
+class TakeawayOrderView(APIView):
+    """
+    Story 3.10 — Place a takeaway order.
+
+    POST /api/v1/restaurant/orders/takeaway/
+
+    AllowAny — customer orders ahead from public menu.
+    No session required (order_type='takeaway', session=None).
+    Payment: POST /pending-orders/{id}/pay/ pattern with reference=f"takeaway-{id}".
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+
+        # Reuse DineInOrderCreateSerializer but session_id is not required for takeaway
+        phone = request.data.get("phone", "").strip()
+        if not phone:
+            return Response({"errors": [{"code": "PHONE_REQUIRED"}]}, status=400)
+
+        items_data = request.data.get("items", [])
+        if not items_data:
+            return Response({"errors": [{"code": "ITEMS_REQUIRED"}]}, status=400)
+
+        item_ids = [item.get("menu_item_id") for item in items_data]
+        modifier_ids = [
+            mid
+            for item in items_data
+            for mid in item.get("selected_modifier_ids", [])
+        ]
+
+        menu_items = {
+            str(mi.id): mi
+            for mi in MenuItem.objects.filter(
+                id__in=item_ids, store=store, is_available=True
+            ).prefetch_related("modifier_groups__modifiers")
+        }
+        modifiers_by_id = {}
+        for mi in menu_items.values():
+            for grp in mi.modifier_groups.all():
+                for mod in grp.modifiers.all():
+                    modifiers_by_id[str(mod.id)] = mod
+
+        missing_items = [str(iid) for iid in item_ids if str(iid) not in menu_items]
+        if missing_items:
+            return Response({"errors": [{"code": "ITEM_NOT_FOUND", "message": f"Items not found: {missing_items}"}]}, status=400)
+
+        missing_mods = [str(mid) for mid in modifier_ids if str(mid) not in modifiers_by_id]
+        if missing_mods:
+            return Response({"errors": [{"code": "MODIFIER_NOT_FOUND", "message": f"Modifiers not found: {missing_mods}"}]}, status=400)
+
+        from decimal import Decimal
+
+        items_snapshot = []
+        total_amount = Decimal("0.00")
+        for item_input in items_data:
+            mi = menu_items[str(item_input["menu_item_id"])]
+            qty = int(item_input.get("quantity", 1))
+            selected_modifiers = [modifiers_by_id[str(mid)] for mid in item_input.get("selected_modifier_ids", [])]
+            mod_total = sum(m.price_addition for m in selected_modifiers)
+            total_amount += (mi.price + mod_total) * qty
+            items_snapshot.append({
+                "menu_item_id": str(mi.id),
+                "name": mi.name,
+                "price": str(mi.price),
+                "quantity": qty,
+                "contains_allergens": mi.contains_allergens,
+                "modifiers": [{"modifier_id": str(m.id), "name": m.name, "price_addition": str(m.price_addition)} for m in selected_modifiers],
+            })
+
+        from django.db import transaction as db_transaction
+
+        with db_transaction.atomic():
+            order = DineInOrder.objects.create(
+                store=store,
+                session=None,  # No table session for takeaway
+                items_snapshot=items_snapshot,
+                total_amount=total_amount,
+                order_type=DineInOrder.ORDER_TYPE_TAKEAWAY,
+            )
+            KitchenTicket.objects.create(
+                store=store,
+                order=order,
+                items_snapshot=items_snapshot,
+                waiter_name="",
+                table_number=0,  # No table for takeaway
+            )
+
+        log.info("takeaway_order_created", order_id=str(order.id), store_id=str(store.id))
+        return Response({
+            **DineInOrderSerializer(order).data,
+            "payment_url": f"/api/v1/restaurant/pending-orders/{order.id}/pay/",
+            "phone": phone,
+        }, status=201)
+
+
+class TakeawayOrderPayView(APIView):
+    """
+    Story 3.10 — Initiate M-Pesa payment for a takeaway order.
+
+    POST /api/v1/restaurant/orders/takeaway/{order_id}/pay/
+    AllowAny — customer pays before pickup.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request, order_id):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+
+        try:
+            order = DineInOrder.objects.get(
+                id=order_id,
+                store=store,
+                order_type=DineInOrder.ORDER_TYPE_TAKEAWAY,
+            )
+        except DineInOrder.DoesNotExist:
+            return Response({"errors": [{"code": "ORDER_NOT_FOUND"}]}, status=404)
+
+        phone = request.data.get("phone", "").strip()
+        if not phone:
+            return Response({"errors": [{"code": "PHONE_REQUIRED"}]}, status=400)
+
+        from apps.payment.exceptions import (
+            InvalidPhoneNumberError,
+            StkPushInitiationError,
+            StkPushRateLimitedError,
+        )
+        from apps.payment.services import initiate_payment
+
+        try:
+            txn = initiate_payment(
+                store=store,
+                method="mpesa",
+                amount=order.total_amount,
+                phone=phone,
+                reference=f"takeaway-{order.id}",
+            )
+        except InvalidPhoneNumberError as exc:
+            return Response({"errors": [{"code": "INVALID_PHONE", "message": str(exc)}]}, status=400)
+        except StkPushRateLimitedError as exc:
+            return Response(
+                {"errors": [{"code": "RATE_LIMITED", "message": f"Retry after {exc.retry_after.isoformat()}."}]},
+                status=429,
+            )
+        except StkPushInitiationError as exc:
+            return Response({"errors": [{"code": "PAYMENT_INITIATION_FAILED", "message": str(exc)}]}, status=502)
+
+        log.info("takeaway_payment_initiated", order_id=str(order.id), txn_id=str(txn.id))
+        return Response({
+            "message": "STK Push sent. Complete payment on your phone.",
+            "transaction_id": str(txn.id),
+            "checkout_request_id": txn.checkout_request_id,
+        })
+
+
 class DineInOrderView(APIView):
     """
     Story 3.6 — Place a dine-in order.
@@ -565,6 +725,13 @@ class KitchenTicketUpdateView(APIView):
         }
         if new_status in status_map:
             DineInOrder.objects.filter(id=ticket.order_id).update(status=status_map[new_status])
+
+        # Story 3.10: notify takeaway customer when order is READY
+        if new_status == KitchenTicket.STATUS_COMPLETED:
+            order = DineInOrder.objects.filter(id=ticket.order_id, order_type=DineInOrder.ORDER_TYPE_TAKEAWAY).first()
+            if order:
+                from apps.restaurant.tasks import notify_takeaway_ready
+                notify_takeaway_ready.apply_async(args=[str(order.id)], countdown=0)
 
         log.info("kitchen_ticket_updated", ticket_id=str(ticket.id), status=new_status)
         return Response(KitchenTicketSerializer(ticket).data)
