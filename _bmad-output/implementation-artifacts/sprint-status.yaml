@@ -85,7 +85,7 @@ development_status:
   3-8-pre-order-advance-payment: done
   3-9-reservation-model: done
   3-10-takeaway-order-type: done
-  3-11-restaurant-bill-payment-split-bill: backlog
+  3-11-restaurant-bill-payment-split-bill: done
   3-12-fr4-cross-epic-tenant-type-lock-test: backlog
   epic-3-retrospective: optional
 

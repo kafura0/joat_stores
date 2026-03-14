@@ -8,6 +8,7 @@ import factory
 from factory.django import DjangoModelFactory
 
 from apps.restaurant.models import (
+    BillShare,
     DineInOrder,
     KitchenTicket,
     MenuItem,
@@ -148,3 +149,16 @@ class PendingOrderFactory(DjangoModelFactory):
     total_amount = Decimal("850.00")
     expires_at = factory.LazyFunction(_pending_order_expires_at)
     converted_order = None
+
+
+class BillShareFactory(DjangoModelFactory):
+    class Meta:
+        model = BillShare
+
+    store = factory.SelfAttribute("session.store")
+    session = factory.SubFactory(TableSessionFactory)
+    payer_phone = "+254712000001"
+    amount = Decimal("850.00")
+    items_snapshot = factory.LazyFunction(list)
+    status = BillShare.STATUS_PENDING
+    payment_transaction = None

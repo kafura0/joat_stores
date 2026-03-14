@@ -23,9 +23,13 @@ def _handle_payment_confirmed(sender, transaction, **kwargs):
     Story 3.10 — When an M-Pesa transaction for a takeaway DineInOrder is confirmed,
     generate a pickup reference and dispatch notification.
 
+    Story 3.11 — When an M-Pesa transaction for a BillShare is confirmed,
+    mark the share PAID and auto-close the session when all shares are settled.
+
     Reference formats:
-        "pending-{order_id}"  → PendingOrder payment
-        "takeaway-{order_id}" → Takeaway DineInOrder payment
+        "pending-{order_id}"    → PendingOrder payment
+        "takeaway-{order_id}"   → Takeaway DineInOrder payment
+        "bill-share-{share_id}" → BillShare payment
     """
     ref = getattr(transaction, "reference", "")
 
@@ -52,3 +56,31 @@ def _handle_payment_confirmed(sender, transaction, **kwargs):
             log.info("takeaway_payment_confirmed", order_id=order_id)
         except Exception as exc:
             log.error("takeaway_payment_signal_error", order_id=order_id, error=str(exc))
+
+    elif ref.startswith("bill-share-"):
+        share_id = ref[len("bill-share-"):]
+        try:
+            from apps.restaurant.models import BillShare, TableSession
+
+            share = BillShare.objects.select_related("session").get(id=share_id)
+            share.status = BillShare.STATUS_PAID
+            share.payment_transaction = transaction
+            share.save(update_fields=["status", "payment_transaction"])
+            log.info("bill_share_paid", share_id=share_id, session_id=str(share.session_id))
+
+            # Auto-close session when all shares are PAID (Story 3.11 AC3)
+            session = share.session
+            unpaid = BillShare.objects.filter(
+                session=session,
+                status=BillShare.STATUS_PENDING,
+            ).exists()
+            if not unpaid:
+                try:
+                    session.transition(TableSession.STATUS_CLOSED)
+                    log.info("session_auto_closed_all_shares_paid", session_id=str(session.id))
+                except Exception as close_exc:
+                    log.warning("session_auto_close_failed", session_id=str(session.id), error=str(close_exc))
+        except BillShare.DoesNotExist:
+            log.warning("bill_share_payment_confirmed_share_not_found", share_id=share_id)
+        except Exception as exc:
+            log.error("bill_share_payment_signal_error", share_id=share_id, error=str(exc))

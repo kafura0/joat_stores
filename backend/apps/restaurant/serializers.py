@@ -7,6 +7,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from apps.restaurant.models import (
+    BillShare,
     DineInOrder,
     KitchenTicket,
     MenuItem,
@@ -278,3 +279,38 @@ class ReservationSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "status", "session", "created_at"]
+
+
+# ---------------------------------------------------------------------------
+# Story 3.11 — BillShare
+# ---------------------------------------------------------------------------
+
+
+class BillShareSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillShare
+        fields = [
+            "id",
+            "session",
+            "payer_phone",
+            "amount",
+            "items_snapshot",
+            "status",
+            "payment_transaction",
+            "created_at",
+        ]
+        read_only_fields = ["id", "status", "payment_transaction", "created_at"]
+
+
+class SplitBillInputSerializer(serializers.Serializer):
+    """Input for POST /sessions/{id}/split-bill/ — list of payer shares."""
+
+    class ShareSerializer(serializers.Serializer):
+        payer_phone = serializers.CharField(max_length=20)
+        amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))
+        items_snapshot = serializers.ListField(default=list, allow_empty=True)
+
+    shares = serializers.ListField(
+        child=ShareSerializer(),
+        min_length=1,
+    )

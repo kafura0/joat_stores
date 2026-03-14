@@ -7,6 +7,7 @@ Story 3.4: TableSession
 Story 3.6: DineInOrder, KitchenTicket
 Story 3.7: PendingOrder
 Story 3.9: Reservation
+Story 3.11: BillShare
 
 All models inherit TenantModel (UUID PK, store FK, soft-delete, TenantQuerySet).
 """
@@ -680,3 +681,72 @@ class Reservation(TenantModel):
             raise InvalidSessionTransition(self.status, new_status)
         self.status = new_status
         self.save(update_fields=["status"])
+
+
+# ---------------------------------------------------------------------------
+# Story 3.11 — BillShare (for split-bill settlement)
+# ---------------------------------------------------------------------------
+
+
+class BillShare(TenantModel):
+    """
+    Represents one person's share of a split bill for a TableSession.
+
+    When all BillShares for a session are PAID, the session auto-closes.
+    For single-payer bills, a single BillShare covers the full amount.
+
+    payment_reference: f"bill-share-{share.id}" — used to correlate webhook.
+    """
+
+    STATUS_PENDING = "PENDING"
+    STATUS_PAID = "PAID"
+    STATUS_CANCELLED = "CANCELLED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_PAID, "Paid"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    session = models.ForeignKey(
+        TableSession,
+        on_delete=models.CASCADE,
+        related_name="bill_shares",
+    )
+    payer_phone = models.CharField(max_length=20)
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    # Items this payer is responsible for (subset of session's orders)
+    items_snapshot = models.JSONField(
+        default=list,
+        help_text="Denormalized list of items in this payer's share.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    payment_transaction = models.ForeignKey(
+        "payment.MpesaTransaction",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bill_shares",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["store", "session", "status"],
+                name="idx_rst_billshare_session_status",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"BillShare({self.id}, session={self.session_id}, amount={self.amount}, status={self.status})"

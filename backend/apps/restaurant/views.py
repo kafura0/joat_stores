@@ -26,6 +26,7 @@ from core.pagination import StoreCursorPagination
 from core.views import TenantViewSet
 
 from apps.restaurant.models import (
+    BillShare,
     DineInOrder,
     InvalidSessionTransition,
     KitchenTicket,
@@ -40,6 +41,7 @@ from apps.restaurant.models import (
 )
 from apps.restaurant.qr import QRTokenError, generate_qr_token, validate_qr_token
 from apps.restaurant.serializers import (
+    BillShareSerializer,
     DineInOrderCreateSerializer,
     DineInOrderSerializer,
     KitchenTicketSerializer,
@@ -51,6 +53,7 @@ from apps.restaurant.serializers import (
     PendingOrderLookupSerializer,
     PendingOrderSerializer,
     ReservationSerializer,
+    SplitBillInputSerializer,
     TableSessionSerializer,
 )
 
@@ -243,6 +246,159 @@ class TableSessionViewSet(TenantViewSet):
             )
         log.info("session_closed", session_id=str(session.id))
         return Response(TableSessionSerializer(session, context={"request": request}).data)
+
+    @action(detail=True, methods=["get"], url_path="bill")
+    def bill(self, request, pk=None):
+        """
+        Story 3.11 — GET itemized bill for a session.
+
+        GET /api/v1/restaurant/sessions/{id}/bill/
+        Returns all orders + total; available once session is BILL_REQUESTED+.
+        """
+        session = self.get_object()
+
+        orders = DineInOrder.objects.filter(
+            session=session,
+            status__in=[
+                DineInOrder.STATUS_PENDING,
+                DineInOrder.STATUS_CONFIRMED,
+                DineInOrder.STATUS_READY,
+            ],
+        )
+
+        total = sum(o.total_amount for o in orders)
+
+        return Response({
+            "session_id": str(session.id),
+            "table_number": session.table.number,
+            "session_status": session.status,
+            "orders": DineInOrderSerializer(orders, many=True).data,
+            "total_amount": str(total),
+            "shares": BillShareSerializer(
+                BillShare.objects.filter(session=session), many=True
+            ).data,
+        })
+
+    @action(detail=True, methods=["post"], url_path="pay-bill")
+    def pay_bill(self, request, pk=None):
+        """
+        Story 3.11 — Single-payer bill settlement via M-Pesa.
+
+        POST /api/v1/restaurant/sessions/{id}/pay-bill/
+        Body: {"phone": "+254712345678"}
+        Creates one BillShare for full amount + initiates STK Push.
+        """
+        session = self.get_object()
+
+        if session.status not in [TableSession.STATUS_BILL_REQUESTED, TableSession.STATUS_OPEN]:
+            return Response(
+                {"errors": [{"code": "INVALID_SESSION_STATUS", "message": "Request bill before paying."}]},
+                status=400,
+            )
+
+        phone = request.data.get("phone", "").strip()
+        if not phone:
+            return Response({"errors": [{"code": "PHONE_REQUIRED"}]}, status=400)
+
+        # Calculate total from all non-cancelled orders
+        orders = DineInOrder.objects.filter(
+            session=session,
+            status__in=[DineInOrder.STATUS_PENDING, DineInOrder.STATUS_CONFIRMED, DineInOrder.STATUS_READY],
+        )
+        from decimal import Decimal as _Decimal
+        total = sum(o.total_amount for o in orders) or _Decimal("0.00")
+
+        share = BillShare.objects.create(
+            store=session.store,
+            session=session,
+            payer_phone=phone,
+            amount=total,
+        )
+
+        from apps.payment.exceptions import (
+            InvalidPhoneNumberError,
+            StkPushInitiationError,
+            StkPushRateLimitedError,
+        )
+        from apps.payment.services import initiate_payment
+
+        try:
+            txn = initiate_payment(
+                store=session.store,
+                method="mpesa",
+                amount=total,
+                phone=phone,
+                reference=f"bill-share-{share.id}",
+            )
+            share.payment_transaction = txn
+            share.save(update_fields=["payment_transaction"])
+        except InvalidPhoneNumberError as exc:
+            return Response({"errors": [{"code": "INVALID_PHONE", "message": str(exc)}]}, status=400)
+        except StkPushRateLimitedError as exc:
+            return Response({"errors": [{"code": "RATE_LIMITED"}]}, status=429)
+        except StkPushInitiationError as exc:
+            return Response({"errors": [{"code": "PAYMENT_INITIATION_FAILED", "message": str(exc)}]}, status=502)
+
+        log.info("bill_payment_initiated", session_id=str(session.id), share_id=str(share.id))
+        return Response(BillShareSerializer(share).data, status=201)
+
+    @action(detail=True, methods=["post"], url_path="split-bill")
+    def split_bill(self, request, pk=None):
+        """
+        Story 3.11 — Split bill across multiple payers.
+
+        POST /api/v1/restaurant/sessions/{id}/split-bill/
+        Body: {"shares": [{"payer_phone": "+254...", "amount": "500.00", "items_snapshot": [...]}]}
+
+        Creates one BillShare per person + initiates STK Push for each.
+        """
+        session = self.get_object()
+
+        ser = SplitBillInputSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response({"errors": ser.errors}, status=400)
+
+        from apps.payment.exceptions import (
+            InvalidPhoneNumberError,
+            StkPushInitiationError,
+            StkPushRateLimitedError,
+        )
+        from apps.payment.services import initiate_payment
+
+        created_shares = []
+        errors = []
+        for share_data in ser.validated_data["shares"]:
+            share = BillShare.objects.create(
+                store=session.store,
+                session=session,
+                payer_phone=share_data["payer_phone"],
+                amount=share_data["amount"],
+                items_snapshot=share_data.get("items_snapshot", []),
+            )
+            try:
+                txn = initiate_payment(
+                    store=session.store,
+                    method="mpesa",
+                    amount=share_data["amount"],
+                    phone=share_data["payer_phone"],
+                    reference=f"bill-share-{share.id}",
+                )
+                share.payment_transaction = txn
+                share.save(update_fields=["payment_transaction"])
+                created_shares.append(share)
+            except (InvalidPhoneNumberError, StkPushRateLimitedError, StkPushInitiationError) as exc:
+                errors.append({"phone": share_data["payer_phone"], "error": str(exc)})
+
+        log.info(
+            "split_bill_initiated",
+            session_id=str(session.id),
+            total_shares=len(created_shares),
+            errors=len(errors),
+        )
+        return Response({
+            "shares": BillShareSerializer(created_shares, many=True).data,
+            "errors": errors,
+        }, status=201)
 
 
 class QRTokenGenerateView(APIView):
