@@ -1,5 +1,5 @@
 """
-Restaurant URL configuration — Stories 3.1, 3.2, 3.3.
+Restaurant URL configuration — Stories 3.1, 3.2, 3.3, 3.4.
 """
 
 from django.urls import path
@@ -14,6 +14,7 @@ from apps.restaurant.views import (
     PublicMenuView,
     QRTokenGenerateView,
     QRTokenValidateView,
+    TableSessionViewSet,
     TableViewSet,
 )
 
@@ -23,6 +24,7 @@ router.register(r"menu-items", MenuItemViewSet, basename="menu-items")
 router.register(r"modifier-groups", ModifierGroupViewSet, basename="modifier-groups")
 router.register(r"modifiers", ModifierViewSet, basename="modifiers")
 router.register(r"tables", TableViewSet, basename="tables")
+router.register(r"sessions", TableSessionViewSet, basename="sessions")
 
 urlpatterns = router.urls + [
     path("public-menu/", PublicMenuView.as_view(), name="public-menu"),

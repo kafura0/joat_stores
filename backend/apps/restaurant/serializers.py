@@ -1,10 +1,10 @@
 """
-Restaurant serializers — Story 3.1 (Menu Management API).
+Restaurant serializers — Story 3.1 (Menu Management API), Story 3.4 (TableSession).
 """
 
 from rest_framework import serializers
 
-from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table
+from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table, TableSession
 
 
 class ModifierSerializer(serializers.ModelSerializer):
@@ -85,3 +85,35 @@ class TableSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ["id"]
+
+
+class TableSessionSerializer(serializers.ModelSerializer):
+    table_number = serializers.IntegerField(source="table.number", read_only=True)
+    assigned_waiter_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TableSession
+        fields = [
+            "id",
+            "table",
+            "table_number",
+            "status",
+            "assigned_waiter",
+            "assigned_waiter_name",
+            "opened_at",
+            "closed_at",
+        ]
+        read_only_fields = [
+            "id",
+            "table_number",
+            "status",
+            "assigned_waiter_name",
+            "opened_at",
+            "closed_at",
+        ]
+
+    def get_assigned_waiter_name(self, obj) -> str | None:
+        if obj.assigned_waiter_id is None:
+            return None
+        user = obj.assigned_waiter
+        return user.get_full_name() or user.email

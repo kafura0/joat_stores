@@ -1,11 +1,11 @@
 """
-Factory-boy factories for restaurant domain — Story 3.1.
+Factory-boy factories for restaurant domain — Story 3.1, Story 3.4.
 """
 
 import factory
 from factory.django import DjangoModelFactory
 
-from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table
+from apps.restaurant.models import MenuItem, MenuSection, Modifier, ModifierGroup, Table, TableSession
 from apps.store.tests.factories import StoreFactory
 
 
@@ -68,3 +68,14 @@ class TableFactory(DjangoModelFactory):
     name = ""
     capacity = 4
     is_active = True
+
+
+class TableSessionFactory(DjangoModelFactory):
+    class Meta:
+        model = TableSession
+
+    store = factory.SelfAttribute("table.store")
+    table = factory.SubFactory(TableFactory)
+    status = TableSession.STATUS_OPEN
+    assigned_waiter = None
+    closed_at = None

@@ -3,12 +3,14 @@ Restaurant domain models.
 
 Story 3.1: MenuSection, MenuItem, ModifierGroup, Modifier
 Story 3.3: Table
+Story 3.4: TableSession
 
 All models inherit TenantModel (UUID PK, store FK, soft-delete, TenantQuerySet).
 """
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from core.models import TenantModel
@@ -201,3 +203,105 @@ class Table(TenantModel):
 
     def __str__(self) -> str:
         return f"Table {self.number}"
+
+
+class InvalidSessionTransition(Exception):
+    """Raised when a TableSession state transition is not allowed."""
+
+    def __init__(self, current: str, attempted: str) -> None:
+        self.current = current
+        self.attempted = attempted
+        super().__init__(
+            f"Cannot transition TableSession from {current!r} to {attempted!r}."
+        )
+
+
+class TableSession(TenantModel):
+    """
+    A dining session at a table — created when a customer scans the QR code.
+
+    State machine (enforced via .transition() — never direct field assignment):
+        OPEN → BILL_REQUESTED → CLOSED
+
+    UniqueConstraint ensures at most one OPEN session exists per table at any time.
+    """
+
+    STATUS_OPEN = "OPEN"
+    STATUS_BILL_REQUESTED = "BILL_REQUESTED"
+    STATUS_CLOSED = "CLOSED"
+
+    STATUS_CHOICES = [
+        (STATUS_OPEN, "Open"),
+        (STATUS_BILL_REQUESTED, "Bill Requested"),
+        (STATUS_CLOSED, "Closed"),
+    ]
+
+    # Valid next states for each current state
+    VALID_TRANSITIONS: dict[str, list[str]] = {
+        STATUS_OPEN: [STATUS_BILL_REQUESTED],
+        STATUS_BILL_REQUESTED: [STATUS_CLOSED],
+        STATUS_CLOSED: [],
+    }
+
+    table = models.ForeignKey(
+        Table,
+        on_delete=models.CASCADE,
+        related_name="sessions",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_OPEN,
+        db_index=True,
+    )
+    assigned_waiter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Waiter assigned to this session; name appears on kitchen tickets.",
+    )
+    opened_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-opened_at"]
+        constraints = [
+            # At most one OPEN session per table — DB-level enforcement.
+            models.UniqueConstraint(
+                fields=["table"],
+                condition=models.Q(status="OPEN"),
+                name="uq_restaurant_tablesession_one_open_per_table",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["store", "status"],
+                name="idx_rst_tablesession_store_status",
+            ),
+            models.Index(
+                fields=["table", "status"],
+                name="idx_rst_tablesession_table_status",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Session(table={self.table.number}, status={self.status})"
+
+    def transition(self, new_status: str) -> None:
+        """
+        Enforce the state machine. Never assign self.status directly.
+
+        Raises InvalidSessionTransition if the transition is not allowed.
+        """
+        allowed = self.VALID_TRANSITIONS.get(self.status, [])
+        if new_status not in allowed:
+            raise InvalidSessionTransition(self.status, new_status)
+
+        self.status = new_status
+        if new_status == self.STATUS_CLOSED:
+            from django.utils import timezone
+
+            self.closed_at = timezone.now()
+        self.save(update_fields=["status", "closed_at"] if new_status == self.STATUS_CLOSED else ["status"])
