@@ -5,6 +5,7 @@ Story 3.1: MenuSection, MenuItem, ModifierGroup, Modifier
 Story 3.3: Table
 Story 3.4: TableSession
 Story 3.6: DineInOrder, KitchenTicket
+Story 3.7: PendingOrder
 
 All models inherit TenantModel (UUID PK, store FK, soft-delete, TenantQuerySet).
 """
@@ -457,3 +458,98 @@ class KitchenTicket(TenantModel):
             raise InvalidSessionTransition(self.status, new_status)
         self.status = new_status
         self.save(update_fields=["status"])
+
+
+# ---------------------------------------------------------------------------
+# Story 3.7 — PendingOrder
+# ---------------------------------------------------------------------------
+
+
+def _generate_pin() -> str:
+    """Generate a random 6-digit PIN string."""
+    import random
+
+    return f"{random.randint(0, 999999):06d}"
+
+
+class PendingOrder(TenantModel):
+    """
+    Pre-arrival order created by a customer who browses the public menu and
+    pre-selects items before arriving at the restaurant.
+
+    The customer receives a 6-digit PIN to give the waiter on arrival.
+    The waiter looks up the PendingOrder by PIN or phone, then converts it to
+    a DineInOrder linked to an active TableSession.
+
+    Lifecycle: PENDING → CONVERTED | EXPIRED
+    PAID is set by Story 3.8 (advance M-Pesa payment) — stored here so the
+    conversion path is consistent regardless of payment state.
+    """
+
+    STATUS_PENDING = "PENDING"
+    STATUS_PAID = "PAID"
+    STATUS_CONVERTED = "CONVERTED"
+    STATUS_EXPIRED = "EXPIRED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_PAID, "Paid in advance"),
+        (STATUS_CONVERTED, "Converted to dine-in"),
+        (STATUS_EXPIRED, "Expired"),
+    ]
+
+    phone = models.CharField(
+        max_length=20,
+        help_text="Customer phone number in E.164 format.",
+    )
+    pin = models.CharField(
+        max_length=6,
+        default=_generate_pin,
+        help_text="6-digit PIN the customer gives the waiter on arrival.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    items_snapshot = models.JSONField(
+        help_text="Denormalized list of ordered items captured at creation time.",
+    )
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    expires_at = models.DateTimeField(
+        help_text="24h from creation — after this the order is purged by Celery beat.",
+    )
+    # Populated on conversion
+    converted_order = models.OneToOneField(
+        DineInOrder,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pending_order",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["store", "status"],
+                name="idx_rst_pendingorder_store_status",
+            ),
+            models.Index(
+                fields=["store", "pin", "status"],
+                name="idx_rst_pendingorder_store_pin_status",
+            ),
+            models.Index(
+                fields=["store", "phone", "status"],
+                name="idx_rst_pendingorder_store_phone_status",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"PendingOrder({self.id}, pin={self.pin}, status={self.status})"

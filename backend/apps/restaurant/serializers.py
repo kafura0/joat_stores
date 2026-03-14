@@ -13,6 +13,7 @@ from apps.restaurant.models import (
     MenuSection,
     Modifier,
     ModifierGroup,
+    PendingOrder,
     Table,
     TableSession,
 )
@@ -200,6 +201,56 @@ class KitchenTicketSerializer(serializers.ModelSerializer):
             "items_snapshot",
             "waiter_name",
             "table_number",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+# ---------------------------------------------------------------------------
+# Story 3.7 — PendingOrder
+# ---------------------------------------------------------------------------
+
+
+class PendingOrderCreateSerializer(serializers.Serializer):
+    """Input serializer for POST /api/v1/restaurant/pending-orders/."""
+
+    phone = serializers.CharField(max_length=20)
+    items = serializers.ListField(
+        child=OrderItemInputSerializer(),
+        min_length=1,
+    )
+
+
+class PendingOrderSerializer(serializers.ModelSerializer):
+    """Output serializer for PendingOrder (customer-facing — PIN visible)."""
+
+    class Meta:
+        model = PendingOrder
+        fields = [
+            "id",
+            "pin",
+            "status",
+            "items_snapshot",
+            "total_amount",
+            "expires_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class PendingOrderLookupSerializer(serializers.ModelSerializer):
+    """Output serializer for waiter lookup — includes phone, pin, items."""
+
+    class Meta:
+        model = PendingOrder
+        fields = [
+            "id",
+            "phone",
+            "pin",
+            "status",
+            "items_snapshot",
+            "total_amount",
+            "expires_at",
             "created_at",
         ]
         read_only_fields = fields

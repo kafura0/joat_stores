@@ -1,5 +1,5 @@
 """
-Restaurant URL configuration — Stories 3.1, 3.2, 3.3, 3.4, 3.6, 3.6b.
+Restaurant URL configuration — Stories 3.1, 3.2, 3.3, 3.4, 3.6, 3.6b, 3.7.
 """
 
 from django.urls import path
@@ -15,6 +15,9 @@ from apps.restaurant.views import (
     ModifierGroupViewSet,
     ModifierViewSet,
     OrderStatusView,
+    PendingOrderConvertView,
+    PendingOrderCreateView,
+    PendingOrderLookupView,
     PublicMenuView,
     QRTokenGenerateView,
     QRTokenValidateView,
@@ -46,5 +49,13 @@ urlpatterns = router.urls + [
         "kitchen/tickets/<uuid:ticket_id>/",
         KitchenTicketUpdateView.as_view(),
         name="kitchen-ticket-update",
+    ),
+    # Story 3.7 — pending orders (pre-arrival) + waiter convert
+    path("pending-orders/", PendingOrderCreateView.as_view(), name="pending-orders"),
+    path("pending-orders/lookup/", PendingOrderLookupView.as_view(), name="pending-orders-lookup"),
+    path(
+        "pending-orders/<uuid:order_id>/convert/",
+        PendingOrderConvertView.as_view(),
+        name="pending-orders-convert",
     ),
 ]

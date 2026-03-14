@@ -278,6 +278,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.payment.tasks.reconcile_payments",
         "schedule": crontab(hour=0, minute=30),
     },
+    "purge-expired-pending-orders": {
+        "task": "apps.restaurant.tasks.purge_expired_pending_orders",
+        "schedule": crontab(minute=0),  # every hour on the hour
+    },
 }
 
 # ---------------------------------------------------------------------------

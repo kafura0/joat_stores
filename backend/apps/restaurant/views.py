@@ -33,6 +33,7 @@ from apps.restaurant.models import (
     MenuSection,
     Modifier,
     ModifierGroup,
+    PendingOrder,
     Table,
     TableSession,
 )
@@ -45,6 +46,9 @@ from apps.restaurant.serializers import (
     MenuSectionSerializer,
     ModifierGroupSerializer,
     ModifierSerializer,
+    PendingOrderCreateSerializer,
+    PendingOrderLookupSerializer,
+    PendingOrderSerializer,
     TableSessionSerializer,
 )
 
@@ -597,6 +601,192 @@ class OrderStatusView(APIView):
             "items_snapshot": order.items_snapshot,
             "placed_at": order.placed_at.isoformat(),
         })
+
+
+class PendingOrderCreateView(APIView):
+    """
+    Story 3.7 — Create a PendingOrder (customer pre-arrival order).
+
+    POST /api/v1/restaurant/pending-orders/
+    AllowAny — customer browses public menu and submits before arriving.
+    Returns: order summary + 6-digit PIN.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+
+        ser = PendingOrderCreateSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response({"errors": ser.errors}, status=400)
+
+        data = ser.validated_data
+
+        # Validate and build snapshot (same logic as DineInOrderView)
+        item_ids = [item["menu_item_id"] for item in data["items"]]
+        modifier_ids = [
+            mid
+            for item in data["items"]
+            for mid in item.get("selected_modifier_ids", [])
+        ]
+
+        menu_items = {
+            str(mi.id): mi
+            for mi in MenuItem.objects.filter(
+                id__in=item_ids, store=store, is_available=True
+            ).prefetch_related("modifier_groups__modifiers")
+        }
+        modifiers_by_id = {}
+        for mi in menu_items.values():
+            for grp in mi.modifier_groups.all():
+                for mod in grp.modifiers.all():
+                    modifiers_by_id[str(mod.id)] = mod
+
+        missing_items = [str(iid) for iid in item_ids if str(iid) not in menu_items]
+        if missing_items:
+            return Response(
+                {"errors": [{"code": "ITEM_NOT_FOUND", "message": f"Items not found or unavailable: {missing_items}"}]},
+                status=400,
+            )
+
+        missing_mods = [str(mid) for mid in modifier_ids if str(mid) not in modifiers_by_id]
+        if missing_mods:
+            return Response(
+                {"errors": [{"code": "MODIFIER_NOT_FOUND", "message": f"Modifiers not found: {missing_mods}"}]},
+                status=400,
+            )
+
+        from decimal import Decimal
+        from django.utils import timezone
+        import datetime
+
+        items_snapshot = []
+        total_amount = Decimal("0.00")
+        for item_input in data["items"]:
+            mi = menu_items[str(item_input["menu_item_id"])]
+            qty = item_input["quantity"]
+            selected_modifiers = [modifiers_by_id[str(mid)] for mid in item_input.get("selected_modifier_ids", [])]
+            mod_total = sum(m.price_addition for m in selected_modifiers)
+            total_amount += (mi.price + mod_total) * qty
+            items_snapshot.append({
+                "menu_item_id": str(mi.id),
+                "name": mi.name,
+                "price": str(mi.price),
+                "quantity": qty,
+                "contains_allergens": mi.contains_allergens,
+                "modifiers": [{"modifier_id": str(m.id), "name": m.name, "price_addition": str(m.price_addition)} for m in selected_modifiers],
+            })
+
+        order = PendingOrder.objects.create(
+            store=store,
+            phone=data["phone"],
+            items_snapshot=items_snapshot,
+            total_amount=total_amount,
+            expires_at=timezone.now() + datetime.timedelta(hours=24),
+        )
+
+        log.info("pending_order_created", order_id=str(order.id), phone=order.phone)
+        return Response(PendingOrderSerializer(order).data, status=201)
+
+
+class PendingOrderLookupView(APIView):
+    """
+    Story 3.7 — Waiter lookup: find a PendingOrder by PIN or phone.
+
+    GET /api/v1/restaurant/pending-orders/lookup/?pin=123456
+    GET /api/v1/restaurant/pending-orders/lookup/?phone=+254712345678
+    """
+
+    def get(self, request):
+        store = getattr(request, "store", None)
+        pin = request.query_params.get("pin", "").strip()
+        phone = request.query_params.get("phone", "").strip()
+
+        if not pin and not phone:
+            return Response({"errors": [{"code": "LOOKUP_PARAM_REQUIRED", "message": "Provide pin or phone."}]}, status=400)
+
+        qs = PendingOrder.objects.filter(
+            store=store,
+            status__in=[PendingOrder.STATUS_PENDING, PendingOrder.STATUS_PAID],
+        )
+        if pin:
+            qs = qs.filter(pin=pin)
+        else:
+            qs = qs.filter(phone=phone)
+
+        order = qs.first()
+        if order is None:
+            return Response({"errors": [{"code": "PENDING_ORDER_NOT_FOUND"}]}, status=404)
+
+        return Response(PendingOrderLookupSerializer(order).data)
+
+
+class PendingOrderConvertView(APIView):
+    """
+    Story 3.7 — Waiter: convert PendingOrder to DineInOrder + KitchenTicket.
+
+    POST /api/v1/restaurant/pending-orders/{id}/convert/
+    Body: {"session_id": "<uuid>"}
+    """
+
+    def post(self, request, order_id):
+        store = getattr(request, "store", None)
+        try:
+            pending = PendingOrder.objects.get(
+                id=order_id,
+                store=store,
+                status__in=[PendingOrder.STATUS_PENDING, PendingOrder.STATUS_PAID],
+            )
+        except PendingOrder.DoesNotExist:
+            return Response({"errors": [{"code": "PENDING_ORDER_NOT_FOUND"}]}, status=404)
+
+        session_id = request.data.get("session_id")
+        if not session_id:
+            return Response({"errors": [{"code": "SESSION_ID_REQUIRED"}]}, status=400)
+
+        try:
+            session = TableSession.objects.select_related("table", "assigned_waiter").get(
+                id=session_id, store=store, status=TableSession.STATUS_OPEN
+            )
+        except TableSession.DoesNotExist:
+            return Response({"errors": [{"code": "SESSION_NOT_FOUND"}]}, status=404)
+
+        waiter_name = ""
+        if session.assigned_waiter_id:
+            w = session.assigned_waiter
+            waiter_name = w.get_full_name() or w.email
+
+        from django.db import transaction
+
+        with transaction.atomic():
+            order = DineInOrder.objects.create(
+                store=store,
+                session=session,
+                items_snapshot=pending.items_snapshot,
+                total_amount=pending.total_amount,
+                status=DineInOrder.STATUS_PENDING,
+            )
+            KitchenTicket.objects.create(
+                store=store,
+                order=order,
+                items_snapshot=pending.items_snapshot,
+                waiter_name=waiter_name,
+                table_number=session.table.number,
+            )
+            pending.status = PendingOrder.STATUS_CONVERTED
+            pending.converted_order = order
+            pending.save(update_fields=["status", "converted_order"])
+
+        log.info(
+            "pending_order_converted",
+            pending_id=str(pending.id),
+            order_id=str(order.id),
+            session_id=str(session.id),
+        )
+        return Response(DineInOrderSerializer(order).data, status=201)
 
 
 class PublicMenuView(APIView):

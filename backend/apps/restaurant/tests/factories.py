@@ -14,6 +14,7 @@ from apps.restaurant.models import (
     MenuSection,
     Modifier,
     ModifierGroup,
+    PendingOrder,
     Table,
     TableSession,
 )
@@ -125,3 +126,25 @@ class KitchenTicketFactory(DjangoModelFactory):
     items_snapshot = factory.LazyFunction(lambda: list(_DEFAULT_SNAPSHOT))
     waiter_name = "Test Waiter"
     table_number = 1
+
+
+def _pending_order_expires_at():
+    import datetime
+
+    from django.utils import timezone
+
+    return timezone.now() + datetime.timedelta(hours=24)
+
+
+class PendingOrderFactory(DjangoModelFactory):
+    class Meta:
+        model = PendingOrder
+
+    store = factory.SubFactory(StoreFactory)
+    phone = "+254712000001"
+    pin = factory.Sequence(lambda n: f"{(n % 1000000):06d}")
+    status = PendingOrder.STATUS_PENDING
+    items_snapshot = factory.LazyFunction(lambda: list(_DEFAULT_SNAPSHOT))
+    total_amount = Decimal("850.00")
+    expires_at = factory.LazyFunction(_pending_order_expires_at)
+    converted_order = None
