@@ -167,13 +167,13 @@ development_status:
   # =============================================================================
   # EPIC 10: Customer Loyalty + Engagement
   # =============================================================================
-  epic-10: backlog
-  10-1-loyaltyaccount-points-balance-history: backlog
-  10-2-stampcard-auto-reward-on-threshold: backlog
-  10-3-whatsapp-notification-dispatch: backlog
-  10-4-unified-customer-account: backlog
-  10-5-whatsapp-ordering-bridge: backlog
-  10-6-powered-by-joat-stores-viral-footer: backlog
+  epic-10: done
+  10-1-loyaltyaccount-points-balance-history: done
+  10-2-stampcard-auto-reward-on-threshold: done
+  10-3-whatsapp-notification-dispatch: done
+  10-4-unified-customer-account: done
+  10-5-whatsapp-ordering-bridge: done
+  10-6-powered-by-joat-stores-viral-footer: done
   epic-10-retrospective: optional
 
   # =============================================================================

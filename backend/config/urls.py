@@ -50,8 +50,8 @@ urlpatterns = [
     path("api/v1/saas/", include("apps.saas.urls", namespace="saas")),  # Epic 9
     path("api/v1/platform/", include((saas_platform_urlpatterns, "platform-saas"))),  # Epic 9 platform
     path("api/v1/ai/", include("apps.ai.urls", namespace="ai")),  # Epic 9.5 scaffold / Epic 11
-    # path("api/v1/loyalty/", include("apps.loyalty.urls")),   # Epic 10
-    # path("api/v1/saas/", include("apps.saas.urls")),         # Epic 9
+    path("api/v1/loyalty/", include("apps.loyalty.urls", namespace="loyalty")),  # Epic 10
+    path("api/v1/notifications/", include("apps.notifications.urls", namespace="notifications")),  # Epic 10
     # Allauth — Story 1.5
     path("accounts/", include("allauth.urls")),
 ]

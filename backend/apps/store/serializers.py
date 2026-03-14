@@ -167,6 +167,8 @@ class BrandingSerializer(serializers.Serializer):
     currency = serializers.CharField()
     country = serializers.CharField()
     status = serializers.CharField()
+    # Story 10.6 — viral footer (rendered by storefront, drives word-of-mouth growth)
+    powered_by = serializers.SerializerMethodField()
 
     def _get_settings(self, obj):
         if not hasattr(self, "_settings_cache") or self._settings_cache.store_id != obj.pk:
@@ -192,3 +194,11 @@ class BrandingSerializer(serializers.Serializer):
 
     def get_font_family(self, obj):
         return self._get_theme(obj).font_family
+
+    def get_powered_by(self, obj):
+        """Story 10.6 — viral footer data rendered by storefront."""
+        return {
+            "text": "Powered by joat stores",
+            "url": "https://joat.com",
+            "logo_url": "https://joat.com/static/logo-small.svg",
+        }
