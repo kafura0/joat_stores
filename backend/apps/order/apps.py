@@ -41,9 +41,24 @@ def _handle_order_payment_confirmed(sender, transaction, **kwargs):
         db_tx.on_commit(
             lambda: send_order_confirmation.apply_async(args=[str(order.id)])
         )
+        # Story 8.7 — first order milestone (idempotent, via on_commit)
+        _store_id = str(order.store_id)
+        _order_id = str(order.id)
+        db_tx.on_commit(
+            lambda: _dispatch_first_order_check(_store_id, _order_id)
+        )
 
         log.info("order_payment_confirmed", order_id=order_id)
     except Order.DoesNotExist:
         log.warning("order_payment_confirmed_order_not_found", order_id=order_id)
     except Exception as exc:
         log.error("order_payment_confirmed_error", order_id=order_id, error=str(exc))
+
+
+def _dispatch_first_order_check(store_id: str, order_id: str) -> None:
+    """Dispatch first-order milestone check (non-fatal)."""
+    try:
+        from apps.analytics.tasks import record_first_order_event
+        record_first_order_event.delay(store_id, order_id)
+    except Exception:
+        pass
