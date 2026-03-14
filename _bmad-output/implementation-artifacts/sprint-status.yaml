@@ -108,18 +108,18 @@ development_status:
   # =============================================================================
   # EPIC 5: Bar Tab Management
   # =============================================================================
-  epic-5: in-progress
-  5-1-bar-tenant-type-activation-tab-state-machine: backlog
-  5-2-round-ordering-on-open-tab: backlog
-  5-3-age-restricted-items-agerestrictionlog: backlog
-  5-4-happy-hour-pricing-snapshot: backlog
-  5-5-tab-split-settlement-via-mpesa: backlog
+  epic-5: done
+  5-1-bar-tenant-type-activation-tab-state-machine: done
+  5-2-round-ordering-on-open-tab: done
+  5-3-age-restricted-items-agerestrictionlog: done
+  5-4-happy-hour-pricing-snapshot: done
+  5-5-tab-split-settlement-via-mpesa: done
   epic-5-retrospective: optional
 
   # =============================================================================
   # EPIC 6: Contracting Module
   # =============================================================================
-  epic-6: backlog
+  epic-6: in-progress
   6-1-contracting-tenant-type-service-catalog: backlog
   6-2-service-booking-availability-calendar: backlog
   6-3-quote-request-quote-acceptance: backlog

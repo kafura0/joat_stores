@@ -63,6 +63,10 @@ class MenuItem(TenantModel):
     )
     contains_allergens = models.BooleanField(default=False)
     allergen_description = models.TextField(blank=True, default="")
+    is_age_restricted = models.BooleanField(
+        default=False,
+        help_text="If True, customers must acknowledge 18+ age restriction in bar tabs.",
+    )
     is_available = models.BooleanField(default=True)
 
     # Time-based scheduling — null means always available
