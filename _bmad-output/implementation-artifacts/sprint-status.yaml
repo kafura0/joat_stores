@@ -75,7 +75,7 @@ development_status:
   # =============================================================================
   epic-3: in-progress
   3-1-menu-management-api: done
-  3-2-public-menu-url: backlog
+  3-2-public-menu-url: done
   3-3-hmac-qr-table-token-generation-validation: backlog
   3-4-table-tablesession-state-machine-waiter-assignment: backlog
   3-5-qr-scan-errors-wrong-table-guard: backlog

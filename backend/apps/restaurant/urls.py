@@ -1,6 +1,8 @@
 """
-Restaurant URL configuration — Story 3.1 (Menu Management API).
+Restaurant URL configuration — Story 3.1 + 3.2.
 """
+
+from django.urls import path
 
 from rest_framework.routers import DefaultRouter
 
@@ -9,6 +11,7 @@ from apps.restaurant.views import (
     MenuSectionViewSet,
     ModifierGroupViewSet,
     ModifierViewSet,
+    PublicMenuView,
 )
 
 router = DefaultRouter()
@@ -17,4 +20,6 @@ router.register(r"menu-items", MenuItemViewSet, basename="menu-items")
 router.register(r"modifier-groups", ModifierGroupViewSet, basename="modifier-groups")
 router.register(r"modifiers", ModifierViewSet, basename="modifiers")
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path("public-menu/", PublicMenuView.as_view(), name="public-menu"),
+]

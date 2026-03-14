@@ -1,6 +1,6 @@
 # Story 1.8: Admin Next.js Shell + Authenticated Layout
 
-Status: review
+Status: done
 
 ---
 
@@ -116,6 +116,12 @@ And the layout is usable at 320px width — sidebar collapses to a hamburger men
   - [x] `eslint` passes with 0 errors (--max-warnings=0)
   - [x] No access token written to `localStorage` or `sessionStorage` (verified via grep)
 
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][LOW] Add `aria-expanded` to hamburger button and update `aria-label` dynamically (`AdminHeader.tsx:33`)
+- [ ] [AI-Review][LOW] Add `Secure` flag to `auth_session` cookie in production environments (`lib/auth.ts:23`)
+- [ ] [AI-Review][LOW] Reset `isRefreshing = false` in a logout hook to prevent indefinitely queued requests if logout fires mid-refresh (`lib/api.ts:42`)
+
 ---
 
 ## Dev Notes
@@ -230,6 +236,13 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
+- Code review (2026-03-13): 6 issues fixed (2 HIGH, 4 MEDIUM), 3 LOW items created as follow-ups
+  - H1 fixed: AdminSidebar active-route bleeding — more-specific nav item wins over prefix match
+  - H2 fixed: AdminHeader store name — `IUser.store_name?` field added; shows "My Store" stub pending Epic 4 store detail API
+  - M1 fixed: login catch now distinguishes 401 (credentials error) from other errors (generic message)
+  - M2 fixed: performRefresh uses `payload.email ?? ""` not hardcoded `""`
+  - M3 fixed: `auth_session` cookie gets `Max-Age=604800` (7 days) — survives browser restart
+  - M4 fixed: performLogin throws on null payload instead of silently using `id: ""`
 - Auth types in `types/auth.ts`: UserRole, IUser, ITokenResponse, ILoginCredentials, IJWTPayload
 - AuthStore expanded: user + accessToken in memory, clearAuth, isAuthenticated(), getRole() helpers
 - lib/auth.ts: decodeToken (base64url decode, no jwt lib), isTokenExpired, performLogin (POST /auth/token/), performLogout (best-effort + local clear), performRefresh (POST /auth/token/refresh/)
@@ -267,3 +280,4 @@ claude-sonnet-4-6
 
 - 2026-03-11: Story created for Epic 1 story 1.8
 - 2026-03-11: Story implemented — all 8 tasks complete, tsc+eslint pass
+- 2026-03-13: Code review complete — 6 issues fixed, 3 LOW follow-ups logged; status → done
