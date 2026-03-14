@@ -28,3 +28,5 @@ Pillow==11.*
 
 # Utilities
 psycopg2-binary==2.9.*
+requests==2.*
+django-redis==5.*

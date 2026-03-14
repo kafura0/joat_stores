@@ -267,6 +267,19 @@ CELERY_TASK_ROUTES = {
     "apps.analytics.*": {"queue": "analytics.reports"},
 }
 
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BEAT_SCHEDULE = {
+    "expire-stale-stk-pushes": {
+        "task": "apps.payment.tasks.expire_stale_stk_pushes",
+        "schedule": timedelta(minutes=2),
+    },
+    "reconcile-payments-daily": {
+        "task": "apps.payment.tasks.reconcile_payments",
+        "schedule": crontab(hour=0, minute=30),
+    },
+}
+
 # ---------------------------------------------------------------------------
 # Multi-Tenancy (TenantMiddleware)
 # ---------------------------------------------------------------------------
@@ -288,6 +301,26 @@ SUSPENDED_PASSTHROUGH_PATHS = env.list(
 )
 
 # ---------------------------------------------------------------------------
+# M-Pesa / Daraja
+# ---------------------------------------------------------------------------
+MPESA_ENV = env("MPESA_ENV", default="sandbox")  # "sandbox" | "production"
+MPESA_CONSUMER_KEY = env("MPESA_CONSUMER_KEY", default="")
+MPESA_CONSUMER_SECRET = env("MPESA_CONSUMER_SECRET", default="")
+MPESA_SHORTCODE = env("MPESA_SHORTCODE", default="")
+MPESA_PASSKEY = env("MPESA_PASSKEY", default="")
+MPESA_CALLBACK_URL = env("MPESA_CALLBACK_URL", default="")
+# Secret used to verify HMAC-SHA256 signatures on Daraja webhook callbacks
+MPESA_WEBHOOK_SECRET = env("MPESA_WEBHOOK_SECRET", default="")
+# Reversal API credentials (Story 2.5)
+MPESA_INITIATOR_NAME = env("MPESA_INITIATOR_NAME", default="")
+MPESA_SECURITY_CREDENTIAL = env("MPESA_SECURITY_CREDENTIAL", default="")
+
+# ---------------------------------------------------------------------------
+# QR Token (Story 3.3)
+# ---------------------------------------------------------------------------
+HMAC_QR_SECRET = env("HMAC_QR_SECRET", default="dev-qr-secret-change-in-prod")
+
+# ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
 CORS_URLS_REGEX = r"^/api/.*$"
@@ -301,6 +334,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Logging (structlog + PII scrubber — Story 1.6)
 # ---------------------------------------------------------------------------
 import structlog  # noqa: E402
+from core.audit import scrub_pii  # noqa: E402
 
 LOGGING = {
     "version": 1,
@@ -347,7 +381,7 @@ structlog.configure(
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
         # PII scrubber — masks phone numbers and emails in all log output
-        "core.audit.scrub_pii",
+        scrub_pii,
         structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
     ],
     context_class=dict,
