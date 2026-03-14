@@ -12,6 +12,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.analytics.urls import platform_urlpatterns as analytics_platform_urlpatterns
+from apps.saas.urls import platform_urlpatterns as saas_platform_urlpatterns
 from apps.store.urls import storefront_urlpatterns
 from core.worker_health import WorkerHealthView
 
@@ -46,7 +47,9 @@ urlpatterns = [
     path("api/v1/contracting/", include("apps.contracting.urls", namespace="contracting")),  # Epic 6
     path("api/v1/analytics/", include("apps.analytics.urls", namespace="analytics")),  # Epic 8
     path("api/v1/platform/", include((analytics_platform_urlpatterns, "platform-analytics"))),  # Epic 8 platform
-    # path("api/v1/ai/", include("apps.ai.urls")),             # Epic 11
+    path("api/v1/saas/", include("apps.saas.urls", namespace="saas")),  # Epic 9
+    path("api/v1/platform/", include((saas_platform_urlpatterns, "platform-saas"))),  # Epic 9 platform
+    path("api/v1/ai/", include("apps.ai.urls", namespace="ai")),  # Epic 9.5 scaffold / Epic 11
     # path("api/v1/loyalty/", include("apps.loyalty.urls")),   # Epic 10
     # path("api/v1/saas/", include("apps.saas.urls")),         # Epic 9
     # Allauth — Story 1.5

@@ -154,14 +154,14 @@ development_status:
   # =============================================================================
   # EPIC 9: SaaS Plans + Subscription Management
   # =============================================================================
-  epic-9: backlog
-  9-1-plan-model: backlog
-  9-2-storesubscription-lifecycle: backlog
-  9-3-mpesa-subscription-renewal: backlog
-  9-4-plan-limit-enforcement: backlog
-  9-5-ai-scaffold-501-endpoints: backlog
-  9-6-merchant-onboarding-runbook: backlog
-  9-7-automated-subscription-suspension-pii-anonymisation-pipeline: backlog
+  epic-9: done
+  9-1-plan-model: done
+  9-2-storesubscription-lifecycle: done
+  9-3-mpesa-subscription-renewal: done
+  9-4-plan-limit-enforcement: done
+  9-5-ai-scaffold-501-endpoints: done
+  9-6-merchant-onboarding-runbook: done
+  9-7-automated-subscription-suspension-pii-anonymisation-pipeline: done
   epic-9-retrospective: optional
 
   # =============================================================================

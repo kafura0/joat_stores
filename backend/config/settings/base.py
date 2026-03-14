@@ -295,10 +295,18 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.analytics.tasks.send_merchant_weekly_digest",
         "schedule": crontab(hour=8, minute=0, day_of_week=1),  # Monday 08:00
     },
-    # SaaS / billing tasks (Story 7.2)
+    # SaaS / billing tasks (Story 7.2 / 9.3 / 9.7)
     "send-subscription-renewal-reminder": {
         "task": "apps.saas.tasks.send_subscription_renewal_reminder",
         "schedule": crontab(hour=9, minute=0),  # daily at 09:00
+    },
+    "suspend-past-due-subscriptions": {
+        "task": "apps.saas.tasks.suspend_past_due_subscriptions",
+        "schedule": crontab(hour=1, minute=0),  # daily at 01:00
+    },
+    "anonymise-cancelled-store-pii": {
+        "task": "apps.saas.tasks.anonymise_cancelled_store_pii",
+        "schedule": crontab(hour=2, minute=0),  # daily at 02:00
     },
 }
 
