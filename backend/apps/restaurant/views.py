@@ -724,12 +724,74 @@ class PendingOrderLookupView(APIView):
         return Response(PendingOrderLookupSerializer(order).data)
 
 
+class PendingOrderPayView(APIView):
+    """
+    Story 3.8 — Initiate advance M-Pesa payment for a PendingOrder.
+
+    POST /api/v1/restaurant/pending-orders/{id}/pay/
+    AllowAny — customer pays before arriving.
+
+    On success: STK Push sent; status remains PENDING until webhook confirms.
+    On webhook confirmation: payment_confirmed signal → status→PAID.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request, order_id):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+
+        try:
+            pending = PendingOrder.objects.get(
+                id=order_id,
+                store=store,
+                status=PendingOrder.STATUS_PENDING,
+            )
+        except PendingOrder.DoesNotExist:
+            return Response({"errors": [{"code": "PENDING_ORDER_NOT_FOUND"}]}, status=404)
+
+        from apps.payment.exceptions import (
+            InvalidPhoneNumberError,
+            StkPushInitiationError,
+            StkPushRateLimitedError,
+        )
+        from apps.payment.services import initiate_payment
+
+        try:
+            txn = initiate_payment(
+                store=store,
+                method="mpesa",
+                amount=pending.total_amount,
+                phone=pending.phone,
+                reference=f"pending-{pending.id}",
+            )
+        except InvalidPhoneNumberError as exc:
+            return Response({"errors": [{"code": "INVALID_PHONE", "message": str(exc)}]}, status=400)
+        except StkPushRateLimitedError as exc:
+            return Response(
+                {"errors": [{"code": "RATE_LIMITED", "message": f"Too many payment attempts. Retry after {exc.retry_after.isoformat()}."}]},
+                status=429,
+            )
+        except StkPushInitiationError as exc:
+            return Response({"errors": [{"code": "PAYMENT_INITIATION_FAILED", "message": str(exc)}]}, status=502)
+
+        log.info("pending_order_payment_initiated", order_id=str(pending.id), txn_id=str(txn.id))
+        return Response({
+            "message": "STK Push sent. Complete payment on your phone.",
+            "transaction_id": str(txn.id),
+            "checkout_request_id": txn.checkout_request_id,
+        })
+
+
 class PendingOrderConvertView(APIView):
     """
-    Story 3.7 — Waiter: convert PendingOrder to DineInOrder + KitchenTicket.
+    Story 3.7/3.8 — Waiter: convert PendingOrder to DineInOrder + KitchenTicket.
 
     POST /api/v1/restaurant/pending-orders/{id}/convert/
     Body: {"session_id": "<uuid>"}
+
+    If the PendingOrder is PAID, the MpesaTransaction is linked to the resulting DineInOrder.
     """
 
     def post(self, request, order_id):
@@ -759,15 +821,30 @@ class PendingOrderConvertView(APIView):
             w = session.assigned_waiter
             waiter_name = w.get_full_name() or w.email
 
-        from django.db import transaction
+        # Look up the confirmed payment transaction if this was a PAID order (Story 3.8)
+        payment_txn = None
+        if pending.status == PendingOrder.STATUS_PAID:
+            from apps.payment.models import MpesaTransaction, MpesaTransactionStatus
 
-        with transaction.atomic():
+            payment_txn = (
+                MpesaTransaction.objects.filter(
+                    store=store,
+                    reference=f"pending-{pending.id}",
+                    status=MpesaTransactionStatus.CONFIRMED,
+                )
+                .first()
+            )
+
+        from django.db import transaction as db_transaction
+
+        with db_transaction.atomic():
             order = DineInOrder.objects.create(
                 store=store,
                 session=session,
                 items_snapshot=pending.items_snapshot,
                 total_amount=pending.total_amount,
                 status=DineInOrder.STATUS_PENDING,
+                payment_transaction=payment_txn,
             )
             KitchenTicket.objects.create(
                 store=store,
@@ -785,6 +862,7 @@ class PendingOrderConvertView(APIView):
             pending_id=str(pending.id),
             order_id=str(order.id),
             session_id=str(session.id),
+            paid=payment_txn is not None,
         )
         return Response(DineInOrderSerializer(order).data, status=201)
 

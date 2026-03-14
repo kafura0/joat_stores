@@ -18,6 +18,7 @@ from apps.restaurant.views import (
     PendingOrderConvertView,
     PendingOrderCreateView,
     PendingOrderLookupView,
+    PendingOrderPayView,
     PublicMenuView,
     QRTokenGenerateView,
     QRTokenValidateView,
@@ -53,6 +54,11 @@ urlpatterns = router.urls + [
     # Story 3.7 — pending orders (pre-arrival) + waiter convert
     path("pending-orders/", PendingOrderCreateView.as_view(), name="pending-orders"),
     path("pending-orders/lookup/", PendingOrderLookupView.as_view(), name="pending-orders-lookup"),
+    path(
+        "pending-orders/<uuid:order_id>/pay/",
+        PendingOrderPayView.as_view(),
+        name="pending-orders-pay",
+    ),
     path(
         "pending-orders/<uuid:order_id>/convert/",
         PendingOrderConvertView.as_view(),

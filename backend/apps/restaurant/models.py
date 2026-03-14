@@ -366,6 +366,15 @@ class DineInOrder(TenantModel):
         validators=[MinValueValidator(Decimal("0.00"))],
     )
     placed_at = models.DateTimeField(auto_now_add=True)
+    # Linked on conversion from PendingOrder (Story 3.8) or after payment confirmation
+    payment_transaction = models.ForeignKey(
+        "payment.MpesaTransaction",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="dine_in_orders",
+        help_text="M-Pesa transaction linked to this order (advance or table-side payment).",
+    )
 
     class Meta:
         ordering = ["-placed_at"]
