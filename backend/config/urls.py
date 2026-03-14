@@ -12,6 +12,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.store.urls import storefront_urlpatterns
+from core.worker_health import WorkerHealthView
 
 
 def health_check(request):
@@ -21,6 +22,7 @@ def health_check(request):
 
 urlpatterns = [
     path("health/", health_check, name="health"),
+    path("health/workers/", WorkerHealthView.as_view(), name="health-workers"),  # Story 7.3
     path("admin/", admin.site.urls),
     # OpenAPI schema — Story 1.6
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="api-schema"),

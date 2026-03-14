@@ -272,6 +272,7 @@ CELERY_TASK_ROUTES = {
 from celery.schedules import crontab  # noqa: E402
 
 CELERY_BEAT_SCHEDULE = {
+    # Payment tasks
     "expire-stale-stk-pushes": {
         "task": "apps.payment.tasks.expire_stale_stk_pushes",
         "schedule": timedelta(minutes=2),
@@ -280,11 +281,37 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.payment.tasks.reconcile_payments",
         "schedule": crontab(hour=0, minute=30),
     },
+    # Restaurant tasks
     "purge-expired-pending-orders": {
         "task": "apps.restaurant.tasks.purge_expired_pending_orders",
         "schedule": crontab(minute=0),  # every hour on the hour
     },
+    # Analytics tasks (Story 7.2 / Story 8.1)
+    "generate-daily-summary": {
+        "task": "apps.analytics.tasks.generate_daily_summary",
+        "schedule": crontab(hour=0, minute=5),  # 00:05 daily
+    },
+    "send-merchant-weekly-digest": {
+        "task": "apps.analytics.tasks.send_merchant_weekly_digest",
+        "schedule": crontab(hour=8, minute=0, day_of_week=1),  # Monday 08:00
+    },
+    # SaaS / billing tasks (Story 7.2)
+    "send-subscription-renewal-reminder": {
+        "task": "apps.saas.tasks.send_subscription_renewal_reminder",
+        "schedule": crontab(hour=9, minute=0),  # daily at 09:00
+    },
 }
+
+# ---------------------------------------------------------------------------
+# DLQ (Dead-Letter Queue) — Story 7.1
+# ---------------------------------------------------------------------------
+# Redis key: "celery:dlq" (sorted set — score = failure timestamp)
+# Tasks that exceed max_retries are published here for manual investigation.
+# Inspect via: redis-cli ZRANGEBYSCORE celery:dlq -inf +inf WITHSCORES
+# ---------------------------------------------------------------------------
+
+# Worker health check (Story 7.3)
+CELERY_WORKER_HEARTBEAT_TIMEOUT = 60  # seconds — workers older than this are "degraded"
 
 # ---------------------------------------------------------------------------
 # Multi-Tenancy (TenantMiddleware)

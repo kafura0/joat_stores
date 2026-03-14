@@ -131,17 +131,17 @@ development_status:
   # =============================================================================
   # EPIC 7: Reliable Async Operations
   # =============================================================================
-  epic-7: in-progress
-  7-1-dlq-exponential-backoff-hardening-on-all-tasks: backlog
-  7-2-celery-beat-full-schedule: backlog
-  7-3-worker-health-endpoint: backlog
-  7-4-celery-flower-production-config: backlog
+  epic-7: done
+  7-1-dlq-exponential-backoff-hardening-on-all-tasks: done
+  7-2-celery-beat-full-schedule: done
+  7-3-worker-health-endpoint: done
+  7-4-celery-flower-production-config: done
   epic-7-retrospective: optional
 
   # =============================================================================
   # EPIC 8: Merchant Analytics Dashboard
   # =============================================================================
-  epic-8: backlog
+  epic-8: in-progress
   8-1-pre-aggregated-summary-models-daily-generation: backlog
   8-2-aievent-append-only-capture: backlog
   8-3-per-store-analytics-api: backlog
