@@ -179,10 +179,10 @@ development_status:
   # =============================================================================
   # EPIC 11: AI + Personalization
   # =============================================================================
-  epic-11: backlog
-  11-1-recommendation-engine: backlog
-  11-2-peak-hour-predictions: backlog
-  11-3-nlp-menu-search: backlog
+  epic-11: done
+  11-1-recommendation-engine: done
+  11-2-peak-hour-predictions: done
+  11-3-nlp-menu-search: done
   epic-11-retrospective: optional
 
   # =============================================================================
