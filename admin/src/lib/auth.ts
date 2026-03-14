@@ -21,7 +21,9 @@ const SESSION_COOKIE = "auth_session";
 
 function setSessionCookie(): void {
   if (typeof document !== "undefined") {
-    document.cookie = `${SESSION_COOKIE}=1; path=/; SameSite=Lax`;
+    // Max-Age=604800 = 7 days — keeps session cookie alive across browser restarts
+    // so a valid refresh cookie isn't wasted on a forced re-login
+    document.cookie = `${SESSION_COOKIE}=1; path=/; SameSite=Lax; Max-Age=604800`;
   }
 }
 
@@ -79,9 +81,13 @@ export async function performLogin(
   const { access, role, store_id } = res.data.data;
   const payload = decodeToken(access);
 
+  if (!payload) {
+    throw new Error("Received malformed access token from server.");
+  }
+
   const user: IUser = {
-    id: payload?.user_id ?? "",
-    email,
+    id: payload.user_id,
+    email: payload.email ?? email, // JWT may omit email; fall back to the login email
     role,
     store_id,
   };
@@ -131,11 +137,13 @@ export async function performRefresh(): Promise<string | null> {
     const { setAccessToken, setUser, user } = useAuthStore.getState();
     setAccessToken(access);
 
-    // Re-hydrate user from new token if we don't have user info yet
+    // Re-hydrate user from new token if we don't have user info yet.
+    // email is not guaranteed in the JWT payload; leave it as "" if absent —
+    // the next full login will populate it correctly.
     if (payload && !user) {
       setUser({
         id: payload.user_id,
-        email: "",
+        email: payload.email ?? "",
         role: payload.role,
         store_id: payload.store_id,
       });

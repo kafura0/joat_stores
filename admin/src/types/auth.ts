@@ -15,6 +15,8 @@ export interface IUser {
   email: string;
   role: UserRole;
   store_id: string | null; // null for platform_admin
+  /** Human-readable store name. Populated from store detail API (Epic 4). Null until then. */
+  store_name?: string | null;
 }
 
 export interface ILoginCredentials {
@@ -32,7 +34,7 @@ export interface ITokenResponse {
 /** Decoded JWT access token payload */
 export interface IJWTPayload {
   user_id: string;
-  email: string;
+  email?: string; // not guaranteed in all token versions — use login email as fallback
   role: UserRole;
   store_id: string | null;
   exp: number;

@@ -15,6 +15,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
+import axios from "axios";
 
 import { performLogin } from "@/lib/auth";
 
@@ -43,9 +44,14 @@ function LoginForm() {
       } else {
         router.push("/dashboard/");
       }
-    } catch {
-      // AC3: Never indicate whether the email exists
-      setError("Incorrect email or password.");
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        // AC3: Never indicate whether the email exists
+        setError("Incorrect email or password.");
+      } else {
+        // Network error, server error, or malformed token — don't imply wrong credentials
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

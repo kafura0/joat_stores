@@ -82,9 +82,19 @@ export default function AdminSidebar({
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             {navItems.map((item) => {
+              // Active if exact match OR a prefix match that isn't superseded by a
+              // more-specific nav item also matching the current path.
+              // Prevents "/platform/" from highlighting while on "/platform/analytics/".
               const isActive =
                 pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href));
+                (item.href !== "/" &&
+                  pathname.startsWith(item.href) &&
+                  !navItems.some(
+                    (other) =>
+                      other.href !== item.href &&
+                      other.href.length > item.href.length &&
+                      pathname.startsWith(other.href)
+                  ));
               return (
                 <li key={item.href}>
                   <Link

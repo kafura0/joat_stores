@@ -19,8 +19,13 @@ export default function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
+  // TODO (Epic 4): Replace stub with real store_name fetched from store detail API.
+  // store_name is not in the JWT payload; IUser.store_name is populated once
+  // the store detail endpoint (/api/v1/stores/{id}/) is built in Epic 4.
   const storeName =
-    user?.role === "platform_admin" ? "Platform Admin" : "Store Admin";
+    user?.role === "platform_admin"
+      ? "Platform Admin"
+      : (user?.store_name ?? "My Store");
 
   async function handleLogout() {
     await performLogout();
