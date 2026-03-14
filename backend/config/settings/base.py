@@ -85,6 +85,10 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     # Story 4.9 — in-app browser detection (WhatsApp, Facebook, Instagram, Line)
     "core.middleware.InAppBrowserMiddleware",
+    # Story 12.3 — OWASP security headers (CSP, X-Content-Type-Options, etc.)
+    "core.middleware.SecurityHeadersMiddleware",
+    # Story 12.4 — Request ID for correlation tracing (binds to structlog contextvars)
+    "core.middleware.RequestIDMiddleware",
 ]
 
 # ---------------------------------------------------------------------------

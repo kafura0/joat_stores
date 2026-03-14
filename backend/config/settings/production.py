@@ -92,6 +92,20 @@ if SENTRY_DSN:
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
 # ---------------------------------------------------------------------------
+# Logging — Story 12.4 (JSON for production log aggregation)
+# ---------------------------------------------------------------------------
+# Override base.py's ConsoleRenderer with JSON for structured log shipping
+# (Datadog, CloudWatch, ELK, etc.)
+import structlog as _structlog
+
+LOGGING["formatters"]["structlog"]["processor"] = _structlog.processors.JSONRenderer()  # type: ignore[index]
+
+# ---------------------------------------------------------------------------
+# WhatsApp webhook verify token
+# ---------------------------------------------------------------------------
+WHATSAPP_WEBHOOK_VERIFY_TOKEN = env("WHATSAPP_WEBHOOK_VERIFY_TOKEN", default="joat-stores-verify")
+
+# ---------------------------------------------------------------------------
 # Gunicorn
 # ---------------------------------------------------------------------------
 # Served via gunicorn in production — see requirements/production.txt

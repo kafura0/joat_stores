@@ -16,6 +16,7 @@ from django.urls import path
 
 from apps.store.views import (
     BrandingView,
+    OfflineInventorySnapshotView,
     StoreListView,
     StoreProvisionView,
     StoreStatusUpdateView,
@@ -48,6 +49,12 @@ storefront_urlpatterns = [
         "branding/",
         BrandingView.as_view(),
         name="store-branding",
+    ),
+    # Story 12.5 — PWA offline inventory snapshot for service worker background sync
+    path(
+        "offline-snapshot/",
+        OfflineInventorySnapshotView.as_view(),
+        name="offline-snapshot",
     ),
 ]
 

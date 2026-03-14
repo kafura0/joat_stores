@@ -1,0 +1,80 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false  # Never cancel a running deploy
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Guard: run CI checks before deploying
+  # ---------------------------------------------------------------------------
+  ci-check:
+    name: Pre-deploy CI (lint + tests)
+    uses: ./.github/workflows/ci.yml
+
+  # ---------------------------------------------------------------------------
+  # Deploy to VPS via SSH
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to VPS
+    needs: ci-check
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/joat_stores
+
+            echo "=== Pulling latest code ==="
+            git pull origin main
+
+            echo "=== Building Docker images ==="
+            docker compose -f docker-compose.production.yml build --no-cache django celery-worker celery-beat
+
+            echo "=== Running database migrations ==="
+            docker compose -f docker-compose.production.yml run --rm django python manage.py migrate --no-input
+
+            echo "=== Collecting static files ==="
+            docker compose -f docker-compose.production.yml run --rm django python manage.py collectstatic --no-input
+
+            echo "=== Rolling restart (zero-downtime) ==="
+            # Scale up new container before stopping old one
+            docker compose -f docker-compose.production.yml up -d --no-deps --scale django=2 django
+            sleep 10
+            docker compose -f docker-compose.production.yml up -d --no-deps --scale django=1 django
+
+            echo "=== Restarting async workers ==="
+            docker compose -f docker-compose.production.yml restart celery-worker celery-beat
+
+            echo "=== Health check ==="
+            sleep 5
+            curl -f https://${{ secrets.PROD_DOMAIN }}/health/ || (echo "Health check failed!" && exit 1)
+
+            echo "=== Deploy complete ==="
+
+  # ---------------------------------------------------------------------------
+  # Notify on failure
+  # ---------------------------------------------------------------------------
+  notify-failure:
+    name: Notify deployment failure
+    needs: [deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post failure notification
+        run: |
+          echo "Deploy FAILED for commit ${{ github.sha }}"
+          # TODO: Wire to Slack/PagerDuty when integrations are configured

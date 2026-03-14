@@ -118,6 +118,78 @@ class TenantMiddleware(MiddlewareMixin):
 
 
 # ---------------------------------------------------------------------------
+# Story 12.3 — Security headers (OWASP Top 10)
+# ---------------------------------------------------------------------------
+
+
+class SecurityHeadersMiddleware(MiddlewareMixin):
+    """
+    Story 12.3 — Adds OWASP-recommended security headers to every response.
+
+    Headers added:
+    - Content-Security-Policy: restricts resource origins (XSS mitigation)
+    - X-Content-Type-Options: nosniff (MIME sniffing)
+    - X-Frame-Options: DENY (clickjacking)
+    - Referrer-Policy: strict-origin-when-cross-origin (privacy)
+    - Permissions-Policy: restricts browser API access
+    - Cross-Origin-Resource-Policy: same-site
+
+    Note: HSTS is handled by production.py (SECURE_HSTS_SECONDS) and Nginx.
+    """
+
+    _CSP = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+
+    def process_response(self, request, response):
+        response.setdefault("Content-Security-Policy", self._CSP)
+        response.setdefault("X-Content-Type-Options", "nosniff")
+        response.setdefault("X-Frame-Options", "DENY")
+        response.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        response.setdefault("Cross-Origin-Resource-Policy", "same-site")
+        return response
+
+
+# ---------------------------------------------------------------------------
+# Story 12.4 — Request ID middleware (correlation tracing)
+# ---------------------------------------------------------------------------
+
+import uuid as _uuid_module
+import structlog as _structlog
+
+
+class RequestIDMiddleware(MiddlewareMixin):
+    """
+    Story 12.4 — Assigns a UUID request_id to every request.
+
+    - Reads X-Request-ID from incoming headers (propagated by load balancer / Nginx).
+    - Falls back to a freshly generated UUID4 if absent.
+    - Binds the id to structlog's contextvars so every log statement in the
+      request lifecycle carries the same request_id field.
+    - Echoes it back in the X-Request-ID response header for client correlation.
+    """
+
+    def process_request(self, request):
+        request_id = request.headers.get("X-Request-ID") or str(_uuid_module.uuid4())
+        request.request_id = request_id
+        _structlog.contextvars.bind_contextvars(request_id=request_id)
+
+    def process_response(self, request, response):
+        request_id = getattr(request, "request_id", None)
+        if request_id:
+            response["X-Request-ID"] = request_id
+        _structlog.contextvars.clear_contextvars()
+        return response
+
+
+# ---------------------------------------------------------------------------
 # Story 4.9 — In-App Browser Detection
 # ---------------------------------------------------------------------------
 

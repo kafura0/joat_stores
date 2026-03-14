@@ -188,11 +188,11 @@ development_status:
   # =============================================================================
   # EPIC 12: Production Hardening
   # =============================================================================
-  epic-12: backlog
-  12-1-github-actions-ci-cd-pipeline: backlog
-  12-2-daily-backup-redis-aof-persistence: backlog
-  12-3-owasp-top-10-kenya-dpa-2019-compliance: backlog
-  12-4-sentry-structlog-full-integration: backlog
-  12-5-store-admin-pwa-offline-inventory: backlog
-  12-6-data-export-merchant-daily-view: backlog
+  epic-12: done
+  12-1-github-actions-ci-cd-pipeline: done
+  12-2-daily-backup-redis-aof-persistence: done
+  12-3-owasp-top-10-kenya-dpa-2019-compliance: done
+  12-4-sentry-structlog-full-integration: done
+  12-5-store-admin-pwa-offline-inventory: done
+  12-6-data-export-merchant-daily-view: done
   epic-12-retrospective: optional

@@ -11,6 +11,7 @@ from apps.analytics.views import (
     AIEventListView,
     BarOccupancyView,
     BarTabMetricsView,
+    DailyRevenueSummaryCSVExport,
     PlatformGMVView,
     PlatformUnitEconomicsView,
     RestaurantPeakHoursView,
@@ -37,6 +38,8 @@ urlpatterns = [
     # Story 8.5 — Bar analytics
     path("bar/tab-metrics/", BarTabMetricsView.as_view(), name="bar-tab-metrics"),
     path("bar/occupancy/", BarOccupancyView.as_view(), name="bar-occupancy"),
+    # Story 12.6 — CSV export
+    path("export/csv/", DailyRevenueSummaryCSVExport.as_view(), name="export-csv"),
 ]
 
 # Platform analytics (registered under /api/v1/platform/ prefix in config/urls.py)

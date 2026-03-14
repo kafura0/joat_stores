@@ -114,6 +114,66 @@ class StoreStatusUpdateView(APIView):
         return Response({"data": detail})
 
 
+class OfflineInventorySnapshotView(APIView):
+    """
+    GET /api/v1/store/offline-snapshot/
+
+    Story 12.5 — PWA offline inventory snapshot.
+
+    Returns a compact JSON payload of all active products + variant inventory
+    levels for service worker caching. The PWA can use this to show stock
+    levels when the device is offline.
+
+    Designed for periodic background sync — SW fetches this every 30 minutes.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        store = getattr(request, "store", None)
+        if store is None:
+            return Response(
+                {"errors": [{"code": "STORE_NOT_FOUND", "message": "Store not resolved."}]},
+                status=404,
+            )
+
+        from apps.product.models import Product, ProductStatus
+
+        products = (
+            Product.objects.filter(store=store, status=ProductStatus.ACTIVE)
+            .prefetch_related("variants")
+        )
+
+        snapshot = []
+        for product in products:
+            variants = [
+                {
+                    "id": str(v.id),
+                    "sku": v.sku,
+                    "name": v.name,
+                    "price": str(v.price) if v.price else str(product.base_price),
+                    "inventory_count": v.inventory_count,
+                    "is_in_stock": v.inventory_count > 0,
+                }
+                for v in product.variants.all()
+            ]
+            snapshot.append({
+                "id": str(product.id),
+                "name": product.name,
+                "slug": product.slug,
+                "base_price": str(product.base_price),
+                "variants": variants,
+            })
+
+        from django.utils import timezone
+        return Response({
+            "store_id": str(store.id),
+            "generated_at": timezone.now().isoformat(),
+            "product_count": len(snapshot),
+            "products": snapshot,
+        })
+
+
 class BrandingView(APIView):
     """
     GET /api/v1/store/branding/

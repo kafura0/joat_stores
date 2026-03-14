@@ -372,3 +372,73 @@ class StoreFirstOrderView(APIView):
             )
         except StoreFirstOrderEvent.DoesNotExist:
             return Response({"first_order_at": None, "first_order_amount": None})
+
+
+# ---------------------------------------------------------------------------
+# Story 12.6 — Data export (CSV)
+# ---------------------------------------------------------------------------
+
+
+class DailyRevenueSummaryCSVExport(APIView):
+    """
+    GET /api/v1/analytics/export/csv/
+
+    Story 12.6 — Export DailyRevenueSummary as CSV for merchant analysis.
+    Query params:
+    - from_date: YYYY-MM-DD (default: 30 days ago)
+    - to_date:   YYYY-MM-DD (default: yesterday)
+
+    Returns a streaming CSV response with RFC 4180 headers.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import csv
+        from django.http import StreamingHttpResponse
+
+        today = timezone.localdate()
+        try:
+            from_date = date.fromisoformat(
+                request.query_params.get("from_date", str(today - timedelta(days=30)))
+            )
+            to_date = date.fromisoformat(
+                request.query_params.get("to_date", str(today - timedelta(days=1)))
+            )
+        except ValueError:
+            return Response(
+                {"errors": [{"code": "INVALID_DATE", "message": "Use YYYY-MM-DD format."}]},
+                status=400,
+            )
+
+        qs = DailyRevenueSummary.objects.filter(
+            store=request.store,
+            date__gte=from_date,
+            date__lte=to_date,
+        ).order_by("date")
+
+        def row_generator():
+            yield ["date", "total_revenue_kes", "order_count", "aov_kes", "amount_usd"]
+            for row in qs:
+                yield [
+                    str(row.date),
+                    str(row.total_revenue),
+                    str(row.order_count),
+                    str(row.aov) if row.aov else "",
+                    str(row.amount_usd),
+                ]
+
+        class EchoBuffer:
+            def write(self, value):
+                return value
+
+        writer = csv.writer(EchoBuffer())
+
+        def stream():
+            for row in row_generator():
+                yield writer.writerow(row)
+
+        response = StreamingHttpResponse(stream(), content_type="text/csv")
+        filename = f"revenue-{from_date}-to-{to_date}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
