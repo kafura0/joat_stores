@@ -1,26 +1,110 @@
-// lib/api.ts
-// axios instance with auth interceptor.
-// Full implementation in Story 1.5 (JWT) and Story 1.8 (admin auth).
+// lib/api.ts — axios instance with auth interceptors for the storefront.
+// Mirrors admin/src/lib/api.ts — Bearer token from memory, 401 → refresh → retry.
+// Customers browsing anonymously have no token; the interceptor skips gracefully.
 
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-/**
- * API client
- *
- * RULE: ALL HTTP requests must go through this instance — never use fetch() directly.
- * This instance will add:
- *   - Authorization: Bearer <access_token> header (from memory)
- *   - Automatic token refresh on 401 using httpOnly refresh cookie
- *   - {data, meta, errors} response envelope parsing
- *
- * Story 1.5 wires the auth interceptor.
- */
+import { useAuthStore } from "@/stores/authStore";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+if (!API_URL && typeof window !== "undefined") {
+  console.error(
+    "[api] NEXT_PUBLIC_API_URL is not set — falling back to http://localhost/api/v1"
+  );
+}
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost/api/v1",
+  baseURL: API_URL ?? "http://localhost/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // send httpOnly refresh cookie on all requests
 });
 
-// TODO: Story 1.5 — add auth interceptor (request + response)
-// TODO: Story 1.5 — add 401 → token refresh → retry logic
+// ── Request interceptor: attach Bearer token ─────────────────────────────────
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const { accessToken } = useAuthStore.getState();
+  if (accessToken && config.headers) {
+    config.headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+
+// Track whether a refresh is already in-flight to avoid parallel refresh loops
+let isRefreshing = false;
+type PendingResolve = (token: string) => void;
+type PendingReject = (err: unknown) => void;
+let pendingQueue: Array<{ resolve: PendingResolve; reject: PendingReject }> = [];
+
+function processQueue(error: unknown, token: string | null): void {
+  pendingQueue.forEach(({ resolve, reject }) => {
+    if (token) resolve(token);
+    else reject(error);
+  });
+  pendingQueue = [];
+}
+
+// ── Response interceptor: 401 → refresh → retry ──────────────────────────────
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
+
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // Don't try to refresh if this IS the refresh request
+    if (originalRequest.url?.includes("/auth/token/refresh/")) {
+      useAuthStore.getState().clearAuth();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login?expired=1";
+      }
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        pendingQueue.push({ resolve, reject });
+      }).then((token) => {
+        if (originalRequest.headers) {
+          originalRequest.headers["Authorization"] = `Bearer ${token}`;
+        }
+        return api(originalRequest);
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const refreshRes = await api.post<{ data: { access: string } }>(
+        "/auth/token/refresh/",
+        {},
+        { withCredentials: true }
+      );
+
+      const newToken = refreshRes.data.data.access;
+      useAuthStore.getState().setAccessToken(newToken);
+
+      processQueue(null, newToken);
+
+      if (originalRequest.headers) {
+        originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+      }
+      return api(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+      useAuthStore.getState().clearAuth();
+      // Redirect to login only if user was authenticated (had a token)
+      if (typeof window !== "undefined") {
+        window.location.href = "/login?expired=1";
+      }
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
+  }
+);

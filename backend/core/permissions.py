@@ -111,25 +111,50 @@ class IsStoreManager(BasePermission):
         )
 
 
+_FEATURE_FLAG_MAP = {
+    "analytics": "has_analytics",
+    "qr_codes": "has_qr_codes",
+    "ai": "has_ai_features",
+    "ai_features": "has_ai_features",
+    "whatsapp": "has_whatsapp",
+}
+
+
 class HasPlanFeature(BasePermission):
     """
-    Checks that the store's plan includes a required feature.
+    Checks that the store's subscription plan includes a required feature flag.
 
     Usage:
-        class MyView(TenantViewSet):
+        class MyView(APIView):
             permission_classes = [IsStoreScoped, HasPlanFeature]
-            required_plan_feature = "analytics"
+            required_plan_feature = "analytics"   # maps to Plan.has_analytics
 
-    Story 1.5 stub — always allows. Epic 9 adds feature flags to Plan.
+    Supported feature names: analytics, qr_codes, ai (or ai_features), whatsapp.
+    Views without required_plan_feature are allowed through.
     """
 
     message = "This feature is not available on your current plan."
     code = "PLAN_FEATURE_UNAVAILABLE"
 
     def has_permission(self, request, view):
-        # Stub: always allow until Epic 9 adds plan feature flags
-        # Epic 9 will check:
-        #   feature = getattr(view, "required_plan_feature", None)
-        #   plan = request.store.subscription.plan
-        #   return feature in plan.features
-        return True
+        feature = getattr(view, "required_plan_feature", None)
+        if feature is None:
+            return True
+
+        store = getattr(request, "store", None)
+        if store is None:
+            return True  # Platform endpoint — no store context, allow through
+
+        try:
+            plan = store.subscription.plan
+        except Exception:
+            return False  # No subscription → no paid features
+
+        if plan is None:
+            return False
+
+        flag = _FEATURE_FLAG_MAP.get(feature)
+        if flag is None:
+            return False  # Unknown feature name — deny (fail safe)
+
+        return bool(getattr(plan, flag, False))

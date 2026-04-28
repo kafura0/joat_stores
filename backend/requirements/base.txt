@@ -31,3 +31,4 @@ qrcode[pil]==8.*
 psycopg2-binary==2.9.*
 requests==2.*
 django-redis==5.*
+whitenoise==6.*

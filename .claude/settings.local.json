@@ -46,7 +46,11 @@
       "Bash(cd C:/Users/User/Desktop/joat_websites/joat_stores/backend && flake8 apps/restaurant/ 2>&1 && python -m pytest apps/restaurant/tests/ -q 2>&1 | tail -5)",
       "Bash(for f:*)",
       "Read(//c/Users/User/Desktop/joat_websites/joat_stores/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(for app:*)",
+      "Read(//c/Users/User/Desktop/joat_websites/joat_stores/backend/apps/**)"
     ]
   }
 }

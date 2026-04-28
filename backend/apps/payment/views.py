@@ -6,9 +6,12 @@ Implementation: Story 2.2, Story 2.3, Story 2.5, Story 4.7
 import hashlib
 import hmac
 
+import structlog
 from django.conf import settings
 
 from rest_framework.permissions import AllowAny, IsAuthenticated
+
+log = structlog.get_logger(__name__)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -83,7 +86,7 @@ def _verify_daraja_signature(request) -> bool:
     expected_sig = request.META.get("HTTP_X_DARAJA_SIGNATURE", "")
     secret = getattr(settings, "MPESA_WEBHOOK_SECRET", "")
     if not secret:
-        # Misconfigured — reject all webhooks to fail safe
+        log.error("mpesa_webhook_secret_not_configured")
         return False
     raw_body = request.body  # bytes — must be read before DRF parses JSON
     computed = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()

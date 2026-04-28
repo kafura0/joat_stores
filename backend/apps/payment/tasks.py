@@ -32,10 +32,43 @@ _STK_PUSH_TIMEOUT_MINUTES = 5
 
 
 @shared_task(bind=True, max_retries=5, queue="payments.reconciliation")
-def reconcile_payment(self, payment_id: int) -> None:
-    """Reconcile M-Pesa payment status with Daraja API. Epic 2 implements body."""
+def reconcile_payment(self, payment_id: str) -> None:
+    """Reconcile a single M-Pesa payment against Daraja Transaction Status API."""
     try:
-        pass  # TODO: Epic 2 — query Daraja transaction status, update payment record
+        from apps.payment.daraja import get_daraja_client
+
+        try:
+            txn = MpesaTransaction.objects.get(id=payment_id)
+        except MpesaTransaction.DoesNotExist:
+            log.warning("reconcile_payment_not_found", payment_id=payment_id)
+            return
+
+        if txn.status in _TERMINAL_STATUSES:
+            return
+
+        client = get_daraja_client()
+        try:
+            result = client.query_transaction_status(txn.checkout_request_id)
+            result_code = int(result.get("ResultCode", 999))
+        except (TransactionStatusQueryError, ValueError):
+            log.warning(
+                "reconcile_payment_query_failed",
+                payment_id=payment_id,
+                checkout_request_id=txn.checkout_request_id,
+            )
+            raise self.retry(countdown=60 * (2**self.request.retries))
+
+        now = timezone.now()
+        if result_code == 0:
+            txn.status = MpesaTransactionStatus.CONFIRMED
+        elif result_code in _EXPIRED_RESULT_CODES:
+            txn.status = MpesaTransactionStatus.EXPIRED
+        else:
+            txn.status = MpesaTransactionStatus.FAILED
+        txn.completed_at = now
+        txn.save(update_fields=["status", "completed_at"])
+        log.info("reconcile_payment_complete", payment_id=payment_id, status=txn.status)
+
     except Exception as exc:
         raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
 

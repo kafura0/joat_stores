@@ -12,7 +12,6 @@ clear 402 response explaining which plan unlocks AI.
 
 import structlog
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -21,6 +20,7 @@ from apps.ai.services import (
     PeakHourPredictionService,
     RecommendationService,
 )
+from core.permissions import IsStoreScoped
 
 # ---------------------------------------------------------------------------
 # Story 11.1 — AI Event capture (fires from storefront JS)
@@ -36,7 +36,7 @@ class AIEventCaptureView(APIView):
     Body: { event_type, entity_id?, metadata? }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreScoped]
 
     def post(self, request):
         from apps.analytics.tasks import capture_ai_event
@@ -99,7 +99,7 @@ class AIRecommendationsView(APIView):
     Requires plan.has_ai_features = True.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreScoped]
 
     def get(self, request):
         store = request.store
@@ -130,7 +130,7 @@ class AIPeakHourPredictionsView(APIView):
     Requires plan.has_ai_features = True.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreScoped]
 
     def get(self, request):
         store = request.store
@@ -160,7 +160,7 @@ class AINLPSearchView(APIView):
     Does NOT require has_ai_features — basic search is available on all plans.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreScoped]
 
     def post(self, request):
         query = request.data.get("q", "").strip()

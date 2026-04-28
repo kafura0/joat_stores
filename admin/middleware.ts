@@ -20,16 +20,19 @@ import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "auth_session";
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export function middleware(request: NextRequest): NextResponse {
+  // Demo mode: skip auth guard so clients can browse without credentials
+  if (DEMO_MODE) return NextResponse.next();
+
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
-  // Already on /login — let through regardless
   if (pathname.startsWith("/login")) {
     return NextResponse.next();
   }
 
-  // No session → redirect to /login
   if (!hasSession) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
