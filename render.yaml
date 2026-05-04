@@ -54,6 +54,19 @@ services:
         value: testapi
       - key: MPESA_SECURITY_CREDENTIAL
         value: ""
+      # Twilio WhatsApp notifications (Story 10.3) — leave blank to disable
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      # QR code signing secret — generate a strong random value
+      - key: HMAC_QR_SECRET
+        generateValue: true
+      # WhatsApp webhook verify token
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        generateValue: true
 
   - type: worker
     name: joat-stores-celery
@@ -83,3 +96,23 @@ services:
         sync: false
       - key: DJANGO_ALLOWED_HOSTS
         value: localhost
+      - key: TWILIO_ACCOUNT_SID
+        fromService:
+          name: joat-stores-api
+          type: web
+          envVarKey: TWILIO_ACCOUNT_SID
+      - key: TWILIO_AUTH_TOKEN
+        fromService:
+          name: joat-stores-api
+          type: web
+          envVarKey: TWILIO_AUTH_TOKEN
+      - key: TWILIO_WHATSAPP_FROM
+        fromService:
+          name: joat-stores-api
+          type: web
+          envVarKey: TWILIO_WHATSAPP_FROM
+      - key: HMAC_QR_SECRET
+        fromService:
+          name: joat-stores-api
+          type: web
+          envVarKey: HMAC_QR_SECRET

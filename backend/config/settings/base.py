@@ -366,6 +366,16 @@ MPESA_SECURITY_CREDENTIAL = env("MPESA_SECURITY_CREDENTIAL", default="")
 HMAC_QR_SECRET = env("HMAC_QR_SECRET", default="dev-qr-secret-change-in-prod")
 
 # ---------------------------------------------------------------------------
+# Twilio (WhatsApp notifications — Story 10.3)
+# Set all three to enable WhatsApp dispatch. Leave empty to disable.
+# Sandbox sender: +14155238886 (customers must opt-in first via Twilio sandbox)
+# Production: use your registered WhatsApp Business number.
+# ---------------------------------------------------------------------------
+TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", default="")
+TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", default="")
+TWILIO_WHATSAPP_FROM = env("TWILIO_WHATSAPP_FROM", default="")  # e.g. +14155238886
+
+# ---------------------------------------------------------------------------
 # Google OAuth2 PKCE (Story 4.5)
 # ---------------------------------------------------------------------------
 GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
