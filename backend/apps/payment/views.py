@@ -11,6 +11,8 @@ from django.conf import settings
 
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+from core.permissions import IsStoreManager
+
 log = structlog.get_logger(__name__)
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -127,7 +129,7 @@ class ReversePaymentView(APIView):
     Requires authentication. Store scoping enforced via request.store.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def post(self, request, transaction_id):
         reason = request.data.get("reason", "")

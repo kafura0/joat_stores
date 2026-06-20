@@ -65,10 +65,13 @@ class Command(BaseCommand):
     # -------------------------------------------------------------------------
 
     def _reset(self):
+        from safedelete.models import HARD_DELETE
+
         from apps.store.models import Store
 
         for slug in [DEMO_RETAIL_SLUG, DEMO_RESTAURANT_SLUG, DEMO_BAR_SLUG]:
-            Store.objects.filter(slug=slug).delete()
+            for store in Store.all_objects.filter(slug=slug):
+                store.delete(force_policy=HARD_DELETE)
         User.objects.filter(email__in=[
             "admin@joat.com", "retail@joat.com", "restaurant@joat.com", "bar@joat.com",
         ]).delete()
@@ -133,13 +136,10 @@ class Command(BaseCommand):
         if created:
             StoreSettings.objects.get_or_create(store=store, defaults=dict(
                 low_stock_threshold=5,
-                order_notifications_email="retail@joat.com",
             ))
-            StoreTheme.objects.get_or_create(store=store, defaults=dict(
-                primary_color="#2563eb",
-                secondary_color="#f59e0b",
-                logo_url="",
-            ))
+            from apps.store.presets import apply_preset
+            theme, _ = StoreTheme.objects.get_or_create(store=store)
+            apply_preset(theme, "modern")
             growth_plan = Plan.objects.filter(slug="growth").first()
             if growth_plan:
                 StoreSubscription.objects.get_or_create(
@@ -147,8 +147,8 @@ class Command(BaseCommand):
                     defaults=dict(
                         plan=growth_plan,
                         status="active",
-                        current_period_start=timezone.now(),
-                        current_period_end=timezone.now() + timedelta(days=30),
+                        period_start=timezone.now().date(),
+                        period_end=(timezone.now() + timedelta(days=30)).date(),
                     ),
                 )
         self.stdout.write(f"  Retail store: {'created' if created else 'exists'}")
@@ -172,13 +172,10 @@ class Command(BaseCommand):
         if created:
             StoreSettings.objects.get_or_create(store=store, defaults=dict(
                 low_stock_threshold=3,
-                order_notifications_email="restaurant@joat.com",
             ))
-            StoreTheme.objects.get_or_create(store=store, defaults=dict(
-                primary_color="#dc2626",
-                secondary_color="#16a34a",
-                logo_url="",
-            ))
+            from apps.store.presets import apply_preset
+            theme, _ = StoreTheme.objects.get_or_create(store=store)
+            apply_preset(theme, "classic")
             pro_plan = Plan.objects.filter(slug="pro").first()
             if pro_plan:
                 StoreSubscription.objects.get_or_create(
@@ -186,8 +183,8 @@ class Command(BaseCommand):
                     defaults=dict(
                         plan=pro_plan,
                         status="active",
-                        current_period_start=timezone.now(),
-                        current_period_end=timezone.now() + timedelta(days=30),
+                        period_start=timezone.now().date(),
+                        period_end=(timezone.now() + timedelta(days=30)).date(),
                     ),
                 )
         self.stdout.write(f"  Restaurant store: {'created' if created else 'exists'}")
@@ -211,13 +208,10 @@ class Command(BaseCommand):
         if created:
             StoreSettings.objects.get_or_create(store=store, defaults=dict(
                 low_stock_threshold=2,
-                order_notifications_email="bar@joat.com",
             ))
-            StoreTheme.objects.get_or_create(store=store, defaults=dict(
-                primary_color="#7c3aed",
-                secondary_color="#f59e0b",
-                logo_url="",
-            ))
+            from apps.store.presets import apply_preset
+            theme, _ = StoreTheme.objects.get_or_create(store=store)
+            apply_preset(theme, "bold")
             starter_plan = Plan.objects.filter(slug="starter").first()
             if starter_plan:
                 StoreSubscription.objects.get_or_create(
@@ -225,8 +219,8 @@ class Command(BaseCommand):
                     defaults=dict(
                         plan=starter_plan,
                         status="active",
-                        current_period_start=timezone.now(),
-                        current_period_end=timezone.now() + timedelta(days=30),
+                        period_start=timezone.now().date(),
+                        period_end=(timezone.now() + timedelta(days=30)).date(),
                     ),
                 )
         self.stdout.write(f"  Bar store: {'created' if created else 'exists'}")
@@ -239,13 +233,16 @@ class Command(BaseCommand):
     def _seed_users(self, retail_store, restaurant_store, bar_store):
         # Platform admin (no store)
         if not User.objects.filter(email="admin@joat.com", store=None).exists():
-            User.objects.create_superuser(
+            u = User(
                 email="admin@joat.com",
-                password="Demo@1234",
                 role=User.Role.PLATFORM_ADMIN,
                 first_name="Demo",
                 last_name="Admin",
+                is_staff=True,
+                is_superuser=True,
             )
+            u.set_password("Demo@1234")
+            u.save()
 
         for email, name, role, store in [
             ("retail@joat.com", "Retail Owner", User.Role.STORE_OWNER, retail_store),
@@ -338,7 +335,7 @@ class Command(BaseCommand):
                             attribute_values=attrs,
                             price=price,
                             inventory_count=stock,
-                            sku=f"DEMO-{prod.id!s[:8].upper()}-{label[:4].upper().replace(' ', '')}",
+                            sku=f"DEMO-{str(prod.id)[:8].upper()}-{label[:4].upper().replace(' ', '')}",
                         )
 
         self.stdout.write("  Retail products: done")
@@ -391,7 +388,7 @@ class Command(BaseCommand):
                     Variant.objects.create(
                         store=store, product=prod,
                         attribute_values={}, price=price, inventory_count=999,
-                        sku=f"REST-{prod.id!s[:8].upper()}",
+                        sku=f"REST-{str(prod.id)[:8].upper()}",
                     )
 
         self.stdout.write("  Restaurant menu: done")
@@ -444,7 +441,7 @@ class Command(BaseCommand):
                     Variant.objects.create(
                         store=store, product=prod,
                         attribute_values={}, price=price, inventory_count=999,
-                        sku=f"BAR-{prod.id!s[:8].upper()}",
+                        sku=f"BAR-{str(prod.id)[:8].upper()}",
                     )
 
         self.stdout.write("  Bar products: done")

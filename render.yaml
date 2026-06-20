@@ -116,3 +116,30 @@ services:
           name: joat-stores-api
           type: web
           envVarKey: HMAC_QR_SECRET
+
+  - type: worker
+    name: joat-stores-celery-beat
+    env: python
+    rootDir: backend
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements/production.txt
+    startCommand: celery -A config.celery_app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: PYTHON_VERSION
+        value: 3.10.14
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          name: joat-stores-api
+          type: web
+          envVarKey: DJANGO_SECRET_KEY
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false

@@ -55,7 +55,30 @@ class TenantMiddleware(MiddlewareMixin):
             request.store = None
             return None
 
-        # 2. Platform subdomain bypass — admin panel, API subdomain, localhost
+        # 2. X-Store-ID header lookup (UUID) — explicit override, even for platform subdomains
+        store_id_header = request.headers.get("X-Store-ID")
+        if store_id_header:
+            try:
+                store_uuid = uuid.UUID(store_id_header)
+                store = Store.objects.filter(id=store_uuid).first()
+                if store is not None:
+                    # Suspended → 503 (exempt branding passthrough at step 6)
+                    SUSPENDED_PASSTHROUGH_PATHS = getattr(
+                        settings, "SUSPENDED_PASSTHROUGH_PATHS", ["/api/v1/store/branding/"]
+                    )
+                    if store.status == StoreStatus.SUSPENDED and not any(
+                        path.startswith(sp) for sp in SUSPENDED_PASSTHROUGH_PATHS
+                    ):
+                        return JsonResponse(
+                            {"errors": [{"field": None, "message": "Store is suspended.", "code": "STORE_SUSPENDED"}]},
+                            status=503,
+                        )
+                    request.store = store
+                    return None
+            except ValueError:
+                pass  # Invalid UUID — fall through
+
+        # 3. Platform subdomain bypass — admin panel, API subdomain, localhost
         platform_subdomains = getattr(settings, "PLATFORM_SUBDOMAINS", [])
         if host in platform_subdomains:
             request.store = None
@@ -63,18 +86,8 @@ class TenantMiddleware(MiddlewareMixin):
 
         store = None
 
-        # 3. X-Store-ID header lookup (UUID)
-        store_id_header = request.headers.get("X-Store-ID")
-        if store_id_header:
-            try:
-                store_uuid = uuid.UUID(store_id_header)
-                store = Store.objects.filter(id=store_uuid).first()
-            except ValueError:
-                pass  # Invalid UUID — fall through to domain lookup
-
         # 4. Host header domain lookup
-        if store is None:
-            store = Store.objects.filter(domain=host).first()
+        store = Store.objects.filter(domain=host).first()
 
         # 5. Not found → 404
         if store is None:
@@ -139,7 +152,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
 
     _CSP = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
+        "script-src 'self' https://js.stripe.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: https:; "

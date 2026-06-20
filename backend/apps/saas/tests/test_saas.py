@@ -326,7 +326,7 @@ class TestPlanLimits:
             Product.objects.create(
                 store=store,
                 name=f"Product {i}",
-                slug=f"product-{i}-{store.id!s[:6]}",
+                slug=f"product-{i}-{str(store.id)[:6]}",
                 base_price=Decimal("100.00"),
                 status=ProductStatus.ACTIVE,
             )

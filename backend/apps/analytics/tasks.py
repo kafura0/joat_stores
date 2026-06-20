@@ -28,6 +28,56 @@ KES_TO_USD = Decimal("0.0078")
     bind=True,
     base=DLQTask,
     queue="analytics.reports",
+    max_retries=3,
+)
+def populate_current_hour_summary(self) -> None:
+    """
+    Populate HourlyOrderSummary for the current hour across all active stores.
+    Runs every hour (via Celery Beat). Ensures today's dashboard data is
+    available via pre-aggregated tables rather than live Order aggregates.
+    """
+    try:
+        from datetime import timedelta
+
+        from django.db.models import Count, Sum
+
+        from apps.analytics.models import HourlyOrderSummary
+        from apps.order.models import Order, OrderStatus
+        from apps.store.models import Store
+
+        now = timezone.localtime()
+        current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+        current_hour_end = current_hour_start + timedelta(hours=1)
+
+        active_stores = Store.objects.filter(status="active")
+
+        for store in active_stores:
+            agg = Order.objects.filter(
+                store=store,
+                status=OrderStatus.CONFIRMED,
+                confirmed_at__gte=current_hour_start,
+                confirmed_at__lt=current_hour_end,
+            ).aggregate(count=Count("id"), rev=Sum("total_amount"))
+
+            HourlyOrderSummary.objects.update_or_create(
+                store=store,
+                date=now.date(),
+                hour=now.hour,
+                defaults={
+                    "order_count": agg["count"] or 0,
+                    "revenue": agg["rev"] or Decimal("0"),
+                },
+            )
+
+        logger.info("populate_current_hour_summary_complete", hour=now.hour)
+    except Exception as exc:
+        logger.exception("populate_current_hour_summary_failed")
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+
+@shared_task(
+    bind=True,
+    base=DLQTask,
+    queue="analytics.reports",
     max_retries=5,
 )
 def generate_daily_summary(self, target_date_str: str = None) -> None:

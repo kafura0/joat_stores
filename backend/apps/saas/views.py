@@ -13,6 +13,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.permissions import IsStoreManager
+
 from apps.saas.models import (
     InvalidSubscriptionTransition,
     Plan,
@@ -114,7 +116,7 @@ class SubscriptionRenewView(APIView):
     The payment reference is "subscription-{store_id}" — handled in apps.py signal.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def post(self, request):
         store = request.store

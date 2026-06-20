@@ -22,6 +22,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.permissions import IsStoreManager
+
 from apps.bar.models import (
     AgeRestrictionLog,
     HappyHour,
@@ -49,7 +51,7 @@ class TabListView(APIView):
     POST /api/v1/bar/tabs/  — open a new tab
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def get(self, request):
         tabs = Tab.objects.filter(store=request.store).order_by("-opened_at")
@@ -70,7 +72,7 @@ class TabListView(APIView):
 class TabDetailView(APIView):
     """GET /api/v1/bar/tabs/{tab_id}/ — full tab detail with rounds + items."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def get(self, request, tab_id):
         try:
@@ -91,7 +93,7 @@ class AddRoundView(APIView):
     - Returns 422 TAB_NOT_OPEN if tab is not OPEN
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def post(self, request, tab_id):
         try:
@@ -224,7 +226,7 @@ class RemoveTabItemView(APIView):
     Staff removes an item from the tab. Creates an audit trail.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def delete(self, request, tab_id, item_id):
         try:
@@ -271,7 +273,7 @@ class RequestBillView(APIView):
     Transitions tab from OPEN → BILL_REQUESTED.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def post(self, request, tab_id):
         try:
@@ -314,7 +316,7 @@ class SplitTabView(APIView):
     }
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def post(self, request, tab_id):
         try:
@@ -405,7 +407,7 @@ class HappyHourListView(APIView):
     POST /api/v1/bar/happy-hours/ — create a happy hour window
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def get(self, request):
         hours = HappyHour.objects.filter(store=request.store)

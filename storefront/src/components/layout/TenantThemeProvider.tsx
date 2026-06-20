@@ -1,27 +1,42 @@
-/**
- * TenantThemeProvider — Server Component.
- *
- * Fetches live branding from GET /api/v1/store/branding/ on every SSR request
- * and injects CSS variables into the page root so all components can use:
- *   var(--color-primary), var(--color-secondary), var(--font-family)
- *
- * Suspended stores: renders branded SuspendedPage inline.
- * Errors: falls back to DEFAULT_BRANDING — never crashes SSR.
- *
- * RULE: Brand colours must NEVER be hardcoded in component files.
- * Always use var(--color-primary) in Tailwind or inline styles.
- *
- * Implementation: Story 1.7
- */
-
 import { headers } from "next/headers";
 import React from "react";
 
-import StorefrontFooter from "@/components/layout/StorefrontFooter";
-import StorefrontHeader from "@/components/layout/StorefrontHeader";
+import { DynamicHeader, DynamicFooter } from "@/components/layout/variants/resolveVariant";
 import { fetchTenantBranding } from "@/lib/branding";
 import { DEFAULT_BRANDING } from "@/types/branding";
 import SuspendedPage from "@/app/suspended/page";
+
+function buildCssVars(branding: typeof DEFAULT_BRANDING): React.CSSProperties {
+  const t = branding.theme;
+  return {
+    "--color-primary": t.primary_color,
+    "--color-secondary": t.secondary_color,
+    "--color-accent": t.accent_color,
+    "--color-background": t.background_color,
+    "--color-surface": t.surface_color,
+    "--color-text-primary": t.text_primary_color,
+    "--color-text-secondary": t.text_secondary_color,
+    "--color-success": t.success_color,
+    "--color-error": t.error_color,
+    "--color-warning": t.warning_color,
+    "--header-bg": t.header_background,
+    "--header-text": t.header_text_color,
+    "--footer-bg": t.footer_background,
+    "--footer-text": t.footer_text_color,
+    "--font-heading": `${t.font_family_heading}, sans-serif`,
+    "--font-body": `${t.font_family_body}, sans-serif`,
+    "--section-padding-y": t.section_padding_y,
+    "--card-padding": t.card_padding,
+    "--container-max-width": t.container_max_width,
+    "--radius-sm": t.radius_sm,
+    "--radius-md": t.radius_md,
+    "--radius-lg": t.radius_lg,
+    "--radius-full": t.radius_full,
+    "--shadow-sm": t.shadow_sm,
+    "--shadow-md": t.shadow_md,
+    "--shadow-lg": t.shadow_lg,
+  } as React.CSSProperties;
+}
 
 export default async function TenantThemeProvider({
   children,
@@ -32,32 +47,45 @@ export default async function TenantThemeProvider({
   const hostname = headersList.get("host") ?? "localhost";
 
   const branding = await fetchTenantBranding(hostname);
+  const cssVariables = buildCssVars(branding);
 
-  const cssVariables = {
-    "--color-primary": branding.primary_color ?? DEFAULT_BRANDING.primary_color,
-    "--color-secondary":
-      branding.secondary_color ?? DEFAULT_BRANDING.secondary_color,
-    "--font-family": `${branding.font_family ?? DEFAULT_BRANDING.font_family}, sans-serif`,
-  } as React.CSSProperties;
+  const shell = (content: React.ReactNode) => (
+    <div style={cssVariables} className="flex min-h-screen flex-col">
+      {branding.theme.announcement_enabled && branding.theme.announcement_text && (
+        <div
+          className="w-full px-4 py-2 text-center text-sm font-medium"
+          style={{
+            backgroundColor: "var(--color-accent)",
+            color: "#ffffff",
+          }}
+        >
+          {branding.theme.announcement_text}
+        </div>
+      )}
+      {branding.theme.custom_css && (
+        <style>{branding.theme.custom_css}</style>
+      )}
+      {content}
+    </div>
+  );
 
-  // Suspended store → render branded 503 page, not children
   if (branding.status === "suspended") {
-    return (
-      <div style={cssVariables} className="flex min-h-screen flex-col">
-        <StorefrontHeader branding={branding} />
+    return shell(
+      <>
+        <DynamicHeader branding={branding} templateStyle={branding.theme.template_style} />
         <main className="flex flex-1 items-center justify-center px-4">
           <SuspendedPage />
         </main>
-        <StorefrontFooter branding={branding} />
-      </div>
+        <DynamicFooter branding={branding} templateStyle={branding.theme.template_style} />
+      </>
     );
   }
 
-  return (
-    <div style={cssVariables} className="flex min-h-screen flex-col">
-      <StorefrontHeader branding={branding} />
+  return shell(
+    <>
+      <DynamicHeader branding={branding} templateStyle={branding.theme.template_style} />
       <main className="flex-1">{children}</main>
-      <StorefrontFooter branding={branding} />
-    </div>
+      <DynamicFooter branding={branding} templateStyle={branding.theme.template_style} />
+    </>
   );
 }

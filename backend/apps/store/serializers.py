@@ -145,29 +145,39 @@ class StoreStatusSerializer(serializers.Serializer):
         return value
 
 
+class ThemeSerializer(serializers.ModelSerializer):
+    """Full read/write serializer for StoreTheme (all design tokens)."""
+
+    font_size_scale = serializers.DecimalField(
+        max_digits=4, decimal_places=2, coerce_to_string=False,
+    )
+
+    class Meta:
+        model = StoreTheme
+        fields = "__all__"
+        read_only_fields = ["id", "store", "created", "modified"]
+
+
 class BrandingSerializer(serializers.Serializer):
     """
     Public read-only branding response for GET /api/v1/store/branding/.
 
-    Combines Store + StoreSettings + StoreTheme into a single flat payload.
+    Combines Store + StoreSettings + StoreTheme into a single payload.
     No auth required — used by storefront SSR to inject tenant CSS variables.
 
     Settings and theme are fetched once per serialization via cached properties
     (_settings_cache, _theme_cache) — 2 DB queries total, not 5.
 
-    Implementation: Story 1.7
+    Implementation: Story 1.7, Phase 1-3 (expanded theme tokens).
     """
 
     store_name = serializers.CharField(source="name")
     logo_url = serializers.SerializerMethodField()
     tagline = serializers.SerializerMethodField()
-    primary_color = serializers.SerializerMethodField()
-    secondary_color = serializers.SerializerMethodField()
-    font_family = serializers.SerializerMethodField()
     currency = serializers.CharField()
     country = serializers.CharField()
     status = serializers.CharField()
-    # Story 10.6 — viral footer (rendered by storefront, drives word-of-mouth growth)
+    theme = serializers.SerializerMethodField()
     powered_by = serializers.SerializerMethodField()
 
     def _get_settings(self, obj):
@@ -186,17 +196,10 @@ class BrandingSerializer(serializers.Serializer):
     def get_tagline(self, obj):
         return self._get_settings(obj).tagline
 
-    def get_primary_color(self, obj):
-        return self._get_theme(obj).primary_color
-
-    def get_secondary_color(self, obj):
-        return self._get_theme(obj).secondary_color
-
-    def get_font_family(self, obj):
-        return self._get_theme(obj).font_family
+    def get_theme(self, obj):
+        return ThemeSerializer(self._get_theme(obj)).data
 
     def get_powered_by(self, obj):
-        """Story 10.6 — viral footer data rendered by storefront."""
         return {
             "text": "Powered by joat stores",
             "url": "https://joat.com",

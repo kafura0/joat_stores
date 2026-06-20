@@ -9,42 +9,7 @@
 
 import type { Metadata } from "next";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface IModifier {
-  id: string;
-  name: string;
-  price_addition: string;
-  is_available: boolean;
-}
-
-interface IModifierGroup {
-  id: string;
-  name: string;
-  min_selections: number;
-  max_selections: number;
-  is_required: boolean;
-  modifiers: IModifier[];
-}
-
-interface IMenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  contains_allergens: boolean;
-  allergen_description: string;
-  modifier_groups: IModifierGroup[];
-}
-
-interface IMenuSection {
-  id: string;
-  name: string;
-  description: string;
-  items: IMenuItem[];
-}
+import type { IMenuSection } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Data fetching
@@ -57,7 +22,6 @@ async function fetchPublicMenu(storeId: string): Promise<IMenuSection[]> {
       "X-Store-ID": storeId,
       "Content-Type": "application/json",
     },
-    // No-store: always fresh (SSR — each request fetches live data)
     cache: "no-store",
   });
 
@@ -80,8 +44,6 @@ export const metadata: Metadata = {
 // ---------------------------------------------------------------------------
 
 export default async function PublicMenuPage() {
-  // Store ID injected by middleware.ts into request headers / cookies
-  // For SSR, we read from the NEXT_PUBLIC_STORE_ID env or a cookie set by middleware
   const storeId = process.env.NEXT_PUBLIC_STORE_ID ?? "";
   const sections = await fetchPublicMenu(storeId);
 

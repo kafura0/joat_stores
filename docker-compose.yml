@@ -14,6 +14,8 @@ services:
 
   postgres:
     image: postgres:17-alpine
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_DB: joat_stores
       POSTGRES_USER: joat_stores
@@ -31,6 +33,8 @@ services:
 
   redis:
     image: redis:8.6-alpine
+    ports:
+      - "6379:6379"
     command: redis-server --appendonly yes --appendfsync everysec
     volumes:
       - redis_data:/data

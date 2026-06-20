@@ -3,6 +3,34 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Theme tokens — overridden at runtime by TenantThemeProvider */
+  --color-primary: #1a1a1a;
+  --color-secondary: #6b7280;
+  --color-accent: #e63946;
+  --color-background: #ffffff;
+  --color-surface: #f9fafb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warning: #f59e0b;
+  --header-bg: #1a1a1a;
+  --header-text: #ffffff;
+  --footer-bg: #1f2937;
+  --footer-text: #f3f4f6;
+  --font-heading: "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-size-base: 1rem;
+  --section-padding-y: 4rem;
+  --card-padding: 1.5rem;
+  --container-max-width: 1280px;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 @theme inline {
@@ -12,15 +40,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
 }

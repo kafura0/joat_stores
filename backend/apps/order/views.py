@@ -12,7 +12,9 @@ OrderConfirmView: POST /api/v1/store/orders/{id}/confirm/  (staff action)
 import uuid as uuid_mod
 
 import structlog
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
+
+from core.permissions import HasStore, IsStoreManager
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -39,7 +41,7 @@ class CartView(APIView):
     30-day TTL refreshed on every write.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def _get_cart_ref(self, request) -> str:
         """Resolve cart_ref from request: user ID (auth) or session param (guest)."""
@@ -48,26 +50,17 @@ class CartView(APIView):
         return request.query_params.get("cart_ref", "") or request.data.get("cart_ref", "")
 
     def get(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
-
         cart_ref = self._get_cart_ref(request)
         if not cart_ref:
             return Response({"cart_ref": "", "items": [], "item_count": 0})
 
-        items = cart_service.get_cart(str(store.id), cart_ref)
+        items = cart_service.get_cart(str(request.store.id), cart_ref)
         return Response({"cart_ref": cart_ref, "items": items, "item_count": sum(i["quantity"] for i in items)})
 
     def post(self, request):
         """Add item to cart."""
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
-
         cart_ref = self._get_cart_ref(request)
         if not cart_ref:
-            # Generate new session cart_ref for guest
             cart_ref = uuid_mod.uuid4().hex
 
         product_id = str(request.data.get("product_id", ""))
@@ -77,16 +70,15 @@ class CartView(APIView):
         if not product_id or not variant_id:
             return Response({"errors": [{"code": "PRODUCT_AND_VARIANT_REQUIRED"}]}, status=400)
 
-        # Verify variant exists and has stock (Story 4.2 AC: 409 if out of stock at checkout)
         from apps.product.models import Variant
 
         try:
-            variant = Variant.objects.get(id=variant_id, store=store)
+            variant = Variant.objects.get(id=variant_id, store=request.store)
         except Variant.DoesNotExist:
             return Response({"errors": [{"code": "VARIANT_NOT_FOUND"}]}, status=404)
 
         try:
-            items = cart_service.add_to_cart(str(store.id), cart_ref, product_id, variant_id, quantity)
+            items = cart_service.add_to_cart(str(request.store.id), cart_ref, product_id, variant_id, quantity)
         except cart_service.CartServiceError:
             return Response({"errors": [{"code": "CART_SERVICE_UNAVAILABLE"}]}, status=503)
 
@@ -94,16 +86,12 @@ class CartView(APIView):
 
     def delete(self, request):
         """Remove a line item by variant_id."""
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
-
         cart_ref = self._get_cart_ref(request)
         variant_id = str(request.data.get("variant_id", ""))
         if not variant_id:
             return Response({"errors": [{"code": "VARIANT_ID_REQUIRED"}]}, status=400)
 
-        items = cart_service.remove_from_cart(str(store.id), cart_ref, variant_id)
+        items = cart_service.remove_from_cart(str(request.store.id), cart_ref, variant_id)
         return Response({"cart_ref": cart_ref, "items": items, "item_count": sum(i["quantity"] for i in items)})
 
 
@@ -114,19 +102,15 @@ class CartMergeView(APIView):
     Body: {"guest_ref": "<uuid>"}
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasStore]
 
     def post(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
-
         guest_ref = request.data.get("guest_ref", "").strip()
         if not guest_ref:
             return Response({"errors": [{"code": "GUEST_REF_REQUIRED"}]}, status=400)
 
         user_ref = str(request.user.id)
-        items = cart_service.merge_carts(str(store.id), guest_ref, user_ref)
+        items = cart_service.merge_carts(str(request.store.id), guest_ref, user_ref)
         return Response({"cart_ref": user_ref, "items": items, "item_count": sum(i["quantity"] for i in items)})
 
 
@@ -153,13 +137,9 @@ class CheckoutView(APIView):
     order.transition_status('confirmed') → send_order_confirmation task.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def post(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
-
         ser = CheckoutInputSerializer(data=request.data)
         if not ser.is_valid():
             return Response({"errors": ser.errors}, status=400)
@@ -168,7 +148,7 @@ class CheckoutView(APIView):
         cart_ref = data["cart_ref"]
 
         # Load cart
-        items = cart_service.get_cart(str(store.id), cart_ref)
+        items = cart_service.get_cart(str(request.store.id), cart_ref)
         if not items:
             return Response({"errors": [{"code": "CART_EMPTY"}]}, status=400)
 
@@ -179,7 +159,7 @@ class CheckoutView(APIView):
         variant_ids = [i["variant_id"] for i in items]
         variants = {
             str(v.id): v
-            for v in Variant.objects.filter(id__in=variant_ids, store=store)
+            for v in Variant.objects.filter(id__in=variant_ids, store=request.store)
         }
 
         out_of_stock = []
@@ -217,11 +197,11 @@ class CheckoutView(APIView):
 
         with db_tx.atomic():
             # Safety-net: write cart to PostgreSQL before STK Push
-            snapshot = cart_service.write_cart_snapshot(store, cart_ref, items)
+            snapshot = cart_service.write_cart_snapshot(request.store, cart_ref, items)
 
             # Create Order
             order = Order.objects.create(
-                store=store,
+                store=request.store,
                 customer_phone=data["phone"],
                 customer_name=data.get("name", ""),
                 customer_email=data.get("email", ""),
@@ -237,7 +217,7 @@ class CheckoutView(APIView):
         from django.db.models import F
         for item in items:
             Variant.objects.filter(
-                id=item["variant_id"], store=store
+                id=item["variant_id"], store=request.store
             ).update(inventory_count=F("inventory_count") - item["quantity"])
 
         # Initiate M-Pesa STK Push
@@ -250,7 +230,7 @@ class CheckoutView(APIView):
 
         try:
             txn = initiate_payment(
-                store=store,
+                store=request.store,
                 method="mpesa",
                 amount=total_amount,
                 phone=data["phone"],
@@ -269,7 +249,7 @@ class CheckoutView(APIView):
             "checkout_initiated",
             order_id=str(order.id),
             total=str(total_amount),
-            store_id=str(store.id),
+            store_id=str(request.store.id),
         )
         return Response({
             "order_id": str(order.id),
@@ -291,12 +271,11 @@ class OrderDetailView(APIView):
     GET /api/v1/store/orders/{id}/
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def get(self, request, order_id):
-        store = getattr(request, "store", None)
         try:
-            order = Order.objects.get(id=order_id, store=store)
+            order = Order.objects.get(id=order_id, store=request.store)
         except Order.DoesNotExist:
             return Response(status=404)
         return Response(OrderSerializer(order).data)
@@ -307,16 +286,15 @@ class OrderStatusView(APIView):
     Story 4.3 / 4.8 — Lightweight order status polling.
     GET /api/v1/store/orders/{id}/status/
     Used by the storefront to check pending_payment_order_id from localStorage.
-    AllowAny — customer recovers their own order.
+    Customer recovers their own order by UUID — store-scoped, no auth required.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def get(self, request, order_id):
-        store = getattr(request, "store", None)
         try:
             order = Order.objects.only("id", "status", "total_amount", "confirmed_at", "cancelled_at").get(
-                id=order_id, store=store
+                id=order_id, store=request.store
             )
         except Order.DoesNotExist:
             return Response(status=404)
@@ -336,10 +314,11 @@ class OrderConfirmView(APIView):
     POST /api/v1/store/orders/{id}/confirm/
     """
 
+    permission_classes = [IsStoreManager]
+
     def post(self, request, order_id):
-        store = getattr(request, "store", None)
         try:
-            order = Order.objects.get(id=order_id, store=store)
+            order = Order.objects.get(id=order_id, store=request.store)
         except Order.DoesNotExist:
             return Response(status=404)
 
@@ -366,30 +345,38 @@ class MerchantDashboardView(APIView):
     Story 4.3b — Merchant daily view: zero-navigation dashboard data.
     GET /api/v1/store/dashboard/
 
-    Returns SSR-ready data: today's order count, revenue, pending orders,
-    active low-stock alerts. All queries are tenant-scoped.
+    Returns SSR-ready data: today's order count (from HourlyOrderSummary),
+    revenue, pending orders, active low-stock alerts. All queries are
+    tenant-scoped. Today aggregates come from pre-aggregated HourlyOrderSummary
+    (populated hourly) — never live Order table aggregates.
     """
 
+    permission_classes = [IsStoreManager]
+
     def get(self, request):
+        from decimal import Decimal
+
         from django.db.models import Sum
         from django.utils import timezone
-        import datetime
 
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+        from apps.analytics.models import HourlyOrderSummary
 
         now = timezone.localtime()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today = now.date()
+        current_hour = now.hour
 
-        today_orders = Order.objects.filter(store=store, created_at__gte=today_start)
-        today_count = today_orders.count()
-        today_revenue = today_orders.filter(
-            status__in=[OrderStatus.CONFIRMED, OrderStatus.FULFILLED, OrderStatus.COMPLETED]
-        ).aggregate(total=Sum("total_amount"))["total"] or 0
+        # Aggregate from pre-computed HourlyOrderSummary for today
+        hourly_rows = HourlyOrderSummary.objects.filter(
+            store=request.store, date=today, hour__lte=current_hour
+        ).aggregate(
+            total_order_count=Sum("order_count"),
+            total_revenue=Sum("revenue"),
+        )
+        today_count = hourly_rows["total_order_count"] or 0
+        today_revenue = hourly_rows["total_revenue"] or Decimal("0")
 
         pending_orders = Order.objects.filter(
-            store=store, status=OrderStatus.PENDING
+            store=request.store, status=OrderStatus.PENDING
         ).order_by("-created_at")[:20]
 
         # Low-stock alerts: variants at or below threshold
@@ -397,12 +384,12 @@ class MerchantDashboardView(APIView):
         from apps.store.models import StoreSettings
 
         try:
-            threshold = StoreSettings.objects.get(store=store).low_stock_threshold
+            threshold = StoreSettings.objects.get(store=request.store).low_stock_threshold
         except StoreSettings.DoesNotExist:
             threshold = DEFAULT_LOW_STOCK_THRESHOLD
 
         low_stock = Variant.objects.filter(
-            store=store,
+            store=request.store,
             inventory_count__lte=threshold,
             is_available=True,
         ).select_related("product")[:50]

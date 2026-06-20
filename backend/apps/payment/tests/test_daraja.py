@@ -180,6 +180,8 @@ def test_ac5_credentials_passed_via_constructor():
         consumer_key="my_key",
         consumer_secret="my_secret",
         redis_client=mock_redis,
+        shortcode="174379",
+        passkey="test_passkey",
     )
 
     with patch("apps.payment.daraja.requests.get") as mock_req:
@@ -296,6 +298,8 @@ def test_init_raises_on_invalid_env():
             consumer_key="key",
             consumer_secret="secret",
             redis_client=mock_redis,
+            shortcode="174379",
+            passkey="test_passkey",
         )
 
 

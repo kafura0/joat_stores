@@ -36,3 +36,40 @@ export interface IApiError {
 export interface IApiErrorResponse {
   errors: IApiError[];
 }
+
+// ---------------------------------------------------------------------------
+// Menu (Story 3.2)
+// ---------------------------------------------------------------------------
+
+export interface IModifier {
+  id: string;
+  name: string;
+  price_addition: string;
+  is_available: boolean;
+}
+
+export interface IModifierGroup {
+  id: string;
+  name: string;
+  min_selections: number;
+  max_selections: number;
+  is_required: boolean;
+  modifiers: IModifier[];
+}
+
+export interface IMenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  contains_allergens: boolean;
+  allergen_description: string;
+  modifier_groups: IModifierGroup[];
+}
+
+export interface IMenuSection {
+  id: string;
+  name: string;
+  description: string;
+  items: IMenuItem[];
+}

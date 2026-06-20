@@ -8,7 +8,6 @@
  * @returns formatted string e.g. "KES 1,500"
  */
 export function formatCurrency(amount: string): string {
-  // TODO: implement proper KES formatting with Intl.NumberFormat
   return `KES ${parseFloat(amount).toLocaleString("en-KE")}`;
 }
 
@@ -18,7 +17,6 @@ export function formatCurrency(amount: string): string {
  * @returns formatted string in East Africa Time
  */
 export function formatDate(isoString: string): string {
-  // TODO: implement with Intl.DateTimeFormat { timeZone: 'Africa/Nairobi' }
   return new Date(isoString).toLocaleString("en-KE", {
     timeZone: "Africa/Nairobi",
   });

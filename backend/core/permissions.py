@@ -17,6 +17,26 @@ Implementation: Story 1.3 (stubs), Story 1.4 (IsPlatformAdmin stub),
 from rest_framework.permissions import BasePermission
 
 
+class HasStore(BasePermission):
+    """
+    Ensures request.store is resolved before the view runs.
+
+    For views that accept unauthenticated (guest) requests — cart,
+    checkout, public menu, etc. — this replaces the manual
+    `getattr(request, "store", None)` + 404 pattern used throughout
+    the codebase. TenantMiddleware sets request.store; if it's missing
+    the store doesn't exist or wasn't resolved.
+    """
+
+    message = "Store not found."
+
+    def has_permission(self, request, view):
+        store = getattr(request, "store", None)
+        if store is None:
+            return False
+        return True
+
+
 class IsStoreScoped(BasePermission):
     """
     Verifies the authenticated user belongs to request.store.

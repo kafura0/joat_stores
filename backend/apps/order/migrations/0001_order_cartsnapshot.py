@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ("store", "0004_initial"),
         ("payment", "0002_add_reversal_reason"),
-        ("users", "0001_initial"),
+        ("users", "0001_add_store_fk_unique_email_store"),
     ]
 
     operations = [

@@ -16,14 +16,16 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.store.models import Store
+from apps.store.models import Store, StoreTheme
 from apps.store.serializers import (
     BrandingSerializer,
     StoreDetailSerializer,
     StoreProvisionSerializer,
     StoreStatusSerializer,
+    ThemeSerializer,
 )
-from core.permissions import IsPlatformAdmin
+from apps.store.presets import PRESETS, apply_preset
+from core.permissions import HasStore, IsPlatformAdmin, IsStoreManager
 
 logger = logging.getLogger(__name__)
 
@@ -188,23 +190,10 @@ class BrandingView(APIView):
     Implementation: Story 1.7
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def get(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response(
-                {
-                    "errors": [
-                        {
-                            "field": None,
-                            "message": "Store not found.",
-                            "code": "STORE_NOT_FOUND",
-                        }
-                    ]
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        store = request.store
 
         serializer = BrandingSerializer(store)
         data = serializer.data
@@ -213,3 +202,76 @@ class BrandingView(APIView):
             return Response({"data": data}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         return Response({"data": data})
+
+
+class ThemeDetailView(APIView):
+    """
+    GET    /api/v1/store/themes/ — current theme (all design tokens)
+    PATCH  /api/v1/store/themes/ — partial update of theme tokens
+    """
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [HasStore()]
+        return [IsStoreManager()]
+
+    def get(self, request):
+        theme, _ = StoreTheme.objects.get_or_create(store=request.store)
+        return Response({"data": ThemeSerializer(theme).data})
+
+    def patch(self, request):
+        theme, _ = StoreTheme.objects.get_or_create(store=request.store)
+        serializer = ThemeSerializer(theme, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"data": serializer.data})
+
+
+class PresetListView(APIView):
+    """
+    GET /api/v1/store/themes/presets/ — list available presets with metadata.
+    """
+
+    permission_classes = [HasStore]
+
+    def get(self, request):
+        result = []
+        for slug, data in PRESETS.items():
+            result.append({
+                "slug": slug,
+                "label": slug.capitalize(),
+                "description": self._describe(slug),
+                "thumbnail_url": None,
+            })
+        return Response({"data": {"presets": result}})
+
+    @staticmethod
+    def _describe(slug):
+        descriptions = {
+            "modern": "Clean, dark header, sharp corners. Best for retail.",
+            "classic": "Serif fonts, warm tones, traditional feel. Best for restaurants.",
+            "minimal": "Black & white, lots of whitespace, subtle shadows. Best for premium brands.",
+            "bold": "Dark mode with purple accents, large headings. Best for nightlife / bars.",
+            "vibrant": "Cyan & orange palette, playful. Best for cafes & fast food.",
+        }
+        return descriptions.get(slug, "")
+
+
+class ApplyPresetView(APIView):
+    """
+    POST /api/v1/store/themes/apply-preset/
+    Body: {"preset": "modern"}
+    """
+
+    permission_classes = [IsStoreManager]
+
+    def post(self, request):
+        slug = request.data.get("preset", "").strip()
+        if slug not in PRESETS:
+            return Response(
+                {"errors": [{"code": "INVALID_PRESET", "message": f"Unknown preset: {slug}. Available: {', '.join(PRESETS)}"}]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        theme, _ = StoreTheme.objects.get_or_create(store=request.store)
+        apply_preset(theme, slug)
+        return Response({"data": ThemeSerializer(theme).data})

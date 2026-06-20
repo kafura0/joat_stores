@@ -20,6 +20,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.permissions import HasStore, IsStoreManager
+
 from django.conf import settings
 
 from core.pagination import StoreCursorPagination
@@ -178,6 +180,11 @@ class TableSessionViewSet(TenantViewSet):
     serializer_class = TableSessionSerializer
     queryset = TableSession.objects.select_related("table", "assigned_waiter")
     http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve", "bill"):
+            return super().get_permissions()
+        return [IsStoreManager()]
 
     class _Pagination(StoreCursorPagination):
         ordering = "-opened_at"
@@ -407,6 +414,8 @@ class QRTokenGenerateView(APIView):
 
     POST /api/v1/restaurant/tables/{id}/qr-token/
     """
+
+    permission_classes = [IsStoreManager]
 
     def post(self, request, table_id):
         try:
@@ -696,11 +705,10 @@ class DineInOrderView(APIView):
     query, calculates total_amount, creates DineInOrder + KitchenTicket atomically.
     """
 
-    def post(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+    permission_classes = [HasStore]
 
+    def post(self, request):
+        store = request.store
         ser = DineInOrderCreateSerializer(data=request.data)
         if not ser.is_valid():
             return Response({"errors": ser.errors}, status=400)
@@ -833,11 +841,10 @@ class KitchenTicketListView(APIView):
     Target response time: < 50ms.
     """
 
-    def get(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+    permission_classes = [HasStore]
 
+    def get(self, request):
+        store = request.store
         tickets = KitchenTicket.objects.filter(
             store=store,
             status__in=[KitchenTicket.STATUS_PENDING, KitchenTicket.STATUS_IN_PROGRESS],
@@ -854,8 +861,10 @@ class KitchenTicketUpdateView(APIView):
     Body: {"status": "IN_PROGRESS" | "COMPLETED" | "CANCELLED"}
     """
 
+    permission_classes = [IsStoreManager]
+
     def patch(self, request, ticket_id):
-        store = getattr(request, "store", None)
+        store = request.store
         try:
             ticket = KitchenTicket.objects.get(id=ticket_id, store=store)
         except KitchenTicket.DoesNotExist:
@@ -937,13 +946,10 @@ class PendingOrderCreateView(APIView):
     Returns: order summary + 6-digit PIN.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def post(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
-
+        store = request.store
         ser = PendingOrderCreateSerializer(data=request.data)
         if not ser.is_valid():
             return Response({"errors": ser.errors}, status=400)
@@ -1025,8 +1031,10 @@ class PendingOrderLookupView(APIView):
     GET /api/v1/restaurant/pending-orders/lookup/?phone=+254712345678
     """
 
+    permission_classes = [HasStore]
+
     def get(self, request):
-        store = getattr(request, "store", None)
+        store = request.store
         pin = request.query_params.get("pin", "").strip()
         phone = request.query_params.get("phone", "").strip()
 
@@ -1060,13 +1068,10 @@ class PendingOrderPayView(APIView):
     On webhook confirmation: payment_confirmed signal → status→PAID.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def post(self, request, order_id):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
-
+        store = request.store
         try:
             pending = PendingOrder.objects.get(
                 id=order_id,
@@ -1119,8 +1124,10 @@ class PendingOrderConvertView(APIView):
     If the PendingOrder is PAID, the MpesaTransaction is linked to the resulting DineInOrder.
     """
 
+    permission_classes = [IsStoreManager]
+
     def post(self, request, order_id):
-        store = getattr(request, "store", None)
+        store = request.store
         try:
             pending = PendingOrder.objects.get(
                 id=order_id,
@@ -1206,6 +1213,11 @@ class ReservationViewSet(TenantViewSet):
     serializer_class = ReservationSerializer
     queryset = Reservation.objects.select_related("table", "session")
     http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return super().get_permissions()
+        return [IsStoreManager()]
 
     class _Pagination(StoreCursorPagination):
         ordering = "reserved_for"
@@ -1312,12 +1324,10 @@ class PublicMenuView(APIView):
     GET /api/v1/restaurant/public-menu/
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def get(self, request):
-        store = getattr(request, "store", None)
-        if store is None:
-            return Response({"errors": [{"code": "STORE_NOT_FOUND"}]}, status=404)
+        store = request.store
 
         # Prefetch available items for performance (avoids N+1)
         available_items_qs = _filter_available_items(

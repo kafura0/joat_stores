@@ -1,3 +1,4 @@
+
 # JOAT Stores — Prototype Deployment Guide
 
 This guide describes how to deploy the multi-tenant SaaS e-commerce platform to a production environment.
@@ -48,7 +49,57 @@ This guide describes how to deploy the multi-tenant SaaS e-commerce platform to 
 - **Environment Variables**:
   - `NEXT_PUBLIC_API_URL`: `https://[your-render-api-url]/api/v1`
 
-## 5. First-Time Setup & Seeding
+## 5. Twilio / WhatsApp Cloud API Setup (Optional)
+
+If you want real WhatsApp notification delivery (order confirmations, loyalty rewards) and inbound WhatsApp ordering:
+
+### Twilio Account Setup (Outbound Messages)
+1. Register at [twilio.com](https://twilio.com/).
+2. In the Twilio Console, navigate to **Messaging** > **Try it out** > **Send a WhatsApp message**.
+3. Follow the sandbox onboarding to connect your WhatsApp number to the Twilio sandbox.
+4. Once connected, note your:
+   - **Account SID** — found on the Console home page.
+   - **Auth Token** — also on the Console home page (reveal with the eye icon).
+   - **WhatsApp sender number** — in the sandbox section (e.g. `+14155238886`).
+5. Set these as environment variables on Render:
+
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your-auth-token
+TWILIO_WHATSAPP_FROM=+14155238886
+```
+
+> ⚠ **Production upgrade:** The Twilio sandbox is limited to pre-approved message templates. For production, you must register a Twilio-approved WhatsApp Business Profile and use pre-approved message templates. See [Twilio WhatsApp API docs](https://www.twilio.com/docs/whatsapp/api).
+
+### Meta WhatsApp Cloud API (Inbound Webhook)
+
+The inbound webhook at `POST /api/v1/notifications/whatsapp/inbound/` accepts incoming messages from Meta's WhatsApp Cloud API.
+
+1. Go to the [Meta Developer Portal](https://developers.facebook.com/) and create (or open) a WhatsApp app.
+2. Under **WhatsApp** > **Configuration**, set:
+   - **Callback URL**: `https://[your-render-api-url]/api/v1/notifications/whatsapp/inbound/`
+   - **Verify Token**: `joat-stores-verify` (or a custom value you set in `WHATSAPP_WEBHOOK_VERIFY_TOKEN`)
+3. Subscribe to the **messages** webhook field.
+4. Add a test number under **WhatsApp** > **Getting Started** and send a message to your business number to verify the webhook.
+
+Required environment variable on Render:
+
+```
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=joat-stores-verify
+```
+
+### Full Twilio + Meta Environment Variables Block
+
+Add to your Render dashboard (all optional — the system runs in stub mode without them):
+
+| Variable | Description |
+|---|---|
+| `TWILIO_ACCOUNT_SID` | Twilio Account SID (outbound WhatsApp) |
+| `TWILIO_AUTH_TOKEN` | Twilio Auth Token |
+| `TWILIO_WHATSAPP_FROM` | WhatsApp sender number (e.g. `+14155238886`) |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | Webhook verification token for Meta Cloud API |
+
+## 6. First-Time Setup & Seeding
 Once all deployments are green:
 1. Open a terminal on the Django web container (via the Render dashboard under **Shell**).
 2. Run migrations:

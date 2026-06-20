@@ -16,6 +16,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.permissions import HasStore, IsStoreManager
+
 from apps.contracting.models import (
     AvailabilitySlot,
     Invoice,
@@ -74,7 +76,7 @@ class ServiceListView(APIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [IsStoreManager()]
 
     def get(self, request):
         services = Service.objects.filter(store=request.store, is_active=True)
@@ -139,7 +141,10 @@ class BookingListView(APIView):
     POST /api/v1/contracting/bookings/ — create a booking
     """
 
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [IsAuthenticated()]
+        return [IsStoreManager()]
 
     def get(self, request):
         bookings = ServiceBooking.objects.filter(store=request.store)
@@ -182,7 +187,7 @@ class BookingListView(APIView):
 class BookingConfirmView(APIView):
     """PATCH /api/v1/contracting/bookings/{id}/confirm/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def patch(self, request, booking_id):
         try:
@@ -212,11 +217,14 @@ class BookingConfirmView(APIView):
 
 class QuoteRequestListView(APIView):
     """
-    GET  /api/v1/contracting/quote-requests/ — list
+    GET  /api/v1/contracting/quote-requests/ — list (staff)
     POST /api/v1/contracting/quote-requests/ — create (customer submits)
     """
 
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [IsStoreManager()]
+        return [IsAuthenticated()]
 
     def get(self, request):
         qrs = QuoteRequest.objects.filter(store=request.store)
@@ -233,7 +241,7 @@ class QuoteRequestListView(APIView):
 class CreateQuoteView(APIView):
     """POST /api/v1/contracting/quote-requests/{id}/quote/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def post(self, request, quote_request_id):
         try:
@@ -262,7 +270,7 @@ class CreateQuoteView(APIView):
 class QuoteAcceptView(APIView):
     """PATCH /api/v1/contracting/quotes/{id}/accept/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def patch(self, request, quote_id):
         try:
@@ -295,7 +303,7 @@ class QuoteAcceptView(APIView):
 class QuoteRejectView(APIView):
     """PATCH /api/v1/contracting/quotes/{id}/reject/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def patch(self, request, quote_id):
         try:
@@ -322,7 +330,7 @@ class QuoteRejectView(APIView):
 class JobDetailView(APIView):
     """GET /api/v1/contracting/jobs/{id}/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasStore]
 
     def get(self, request, job_id):
         try:
@@ -337,7 +345,7 @@ class JobDetailView(APIView):
 class JobTransitionView(APIView):
     """PATCH /api/v1/contracting/jobs/{id}/transition/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def patch(self, request, job_id):
         try:
@@ -357,7 +365,7 @@ class JobTransitionView(APIView):
 class MilestoneUpdateView(APIView):
     """PATCH /api/v1/contracting/milestones/{id}/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def patch(self, request, milestone_id):
         try:
@@ -402,7 +410,7 @@ class MilestoneUpdateView(APIView):
 class CreateInvoiceView(APIView):
     """POST /api/v1/contracting/jobs/{job_id}/invoice/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStoreManager]
 
     def post(self, request, job_id):
         try:
@@ -494,12 +502,13 @@ class InvoicePayView(APIView):
     Reference: f"invoice-{invoice.id}"
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [HasStore]
 
     def post(self, request, invoice_id):
+        store = request.store
         try:
             invoice = Invoice.objects.select_related("job").get(
-                id=invoice_id, store=request.store
+                id=invoice_id, store=store
             )
         except Invoice.DoesNotExist:
             return Response(status=404)

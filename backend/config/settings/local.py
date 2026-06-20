@@ -31,11 +31,7 @@ DATABASES = {
 # ---------------------------------------------------------------------------
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": env("REDIS_URL", default="redis://127.0.0.1:6379/0"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     }
 }
 
@@ -71,3 +67,8 @@ SENTRY_DSN = env("SENTRY_DSN", default="")
 # CORS (permissive for local dev)
 # ---------------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Index name length check (E034) is for Oracle; Postgres allows 63 chars.
+SILENCED_SYSTEM_CHECKS = [
+    "models.E034",
+]

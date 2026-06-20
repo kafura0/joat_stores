@@ -17,6 +17,7 @@ Story 1.7 adds: StoreSettings + StoreTheme full implementation (branding)
 
 import re
 import uuid
+from decimal import Decimal
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -129,23 +130,19 @@ class Store(SafeDeleteModel):
 
     def _has_existing_orders(self) -> bool:
         """Return True if this store has any orders across all commerce verticals."""
+        from django.apps import apps
+
         # Restaurant vertical — DineInOrder (Epic 3)
-        try:
-            from apps.restaurant.models import DineInOrder
-
-            if DineInOrder.objects.filter(store=self).exists():
+        if apps.is_installed("apps.restaurant"):
+            DineInOrder = apps.get_model("restaurant", "DineInOrder")
+            if DineInOrder and DineInOrder.objects.filter(store=self).exists():
                 return True
-        except Exception:
-            pass
 
-        # Retail vertical — Order (Epic 4, not yet implemented)
-        try:
-            from apps.order.models import Order
-
-            if Order.objects.filter(store=self).exists():
+        # Retail vertical — Order (Epic 4)
+        if apps.is_installed("apps.order"):
+            Order = apps.get_model("order", "Order")
+            if Order and Order.objects.filter(store=self).exists():
                 return True
-        except Exception:
-            pass
 
         return False
 
@@ -183,28 +180,102 @@ class StoreSettings(TenantModel):
 
 class StoreTheme(TenantModel):
     """
-    Per-store branding theme (colours, fonts, logo).
+    Per-store branding theme — Phase 1-3 design token system.
 
-    Story 1.7 adds: primary_color, secondary_color, font_family.
+    Every field has a sensible default so stores work out of the box.
+    Presets (Modern, Classic, Minimal, Bold, Vibrant) batch-set all tokens.
     """
 
-    primary_color = models.CharField(
-        max_length=20,
-        default="#1a1a1a",
+    # ── Preset tracking ──────────────────────────────────────────────
+    preset_slug = models.CharField(
+        max_length=30, default="modern",
+        help_text="Slug of the last-applied preset (modern|classic|minimal|bold|vibrant).",
+    )
+    template_style = models.CharField(
+        max_length=30, default="modern",
+        help_text="Layout variant key (modern|classic|minimal|bold).",
+    )
+
+    # ── Colour palette ───────────────────────────────────────────────
+    primary_color = models.CharField(max_length=20, default="#1a1a1a",
         validators=[validate_css_color],
-        help_text="CSS colour value for brand primary (e.g. #e63946).",
-    )
-    secondary_color = models.CharField(
-        max_length=20,
-        default="#6b7280",
+        help_text="Brand primary — nav bg, buttons, links.")
+    secondary_color = models.CharField(max_length=20, default="#6b7280",
         validators=[validate_css_color],
-        help_text="CSS colour value for brand secondary.",
+        help_text="Brand secondary — muted accents, borders.")
+    accent_color = models.CharField(max_length=20, default="#e63946",
+        validators=[validate_css_color],
+        help_text="Highlights, CTAs, sale badges.")
+    background_color = models.CharField(max_length=20, default="#ffffff",
+        validators=[validate_css_color],
+        help_text="Page background.")
+    surface_color = models.CharField(max_length=20, default="#f9fafb",
+        validators=[validate_css_color],
+        help_text="Card / section background.")
+    text_primary_color = models.CharField(max_length=20, default="#111827",
+        validators=[validate_css_color],
+        help_text="Primary text colour.")
+    text_secondary_color = models.CharField(max_length=20, default="#6b7280",
+        validators=[validate_css_color],
+        help_text="Secondary / muted text colour.")
+    success_color = models.CharField(max_length=20, default="#16a34a",
+        validators=[validate_css_color],
+        help_text="Success / in-stock indicator.")
+    error_color = models.CharField(max_length=20, default="#dc2626",
+        validators=[validate_css_color],
+        help_text="Error / out-of-stock indicator.")
+    warning_color = models.CharField(max_length=20, default="#f59e0b",
+        validators=[validate_css_color],
+        help_text="Warning / low-stock indicator.")
+    header_background = models.CharField(max_length=20, default="#1a1a1a",
+        validators=[validate_css_color],
+        help_text="Header bar background.")
+    header_text_color = models.CharField(max_length=20, default="#ffffff",
+        validators=[validate_css_color],
+        help_text="Header text / link colour.")
+    footer_background = models.CharField(max_length=20, default="#1f2937",
+        validators=[validate_css_color])
+    footer_text_color = models.CharField(max_length=20, default="#f3f4f6",
+        validators=[validate_css_color])
+
+    # ── Typography ───────────────────────────────────────────────────
+    font_family_heading = models.CharField(max_length=100, default="Inter",
+        help_text="Heading font family.")
+    font_family_body = models.CharField(max_length=100, default="Inter",
+        help_text="Body font family.")
+    font_size_base = models.CharField(max_length=10, default="1rem",
+        help_text="Base font size (e.g. 1rem, 16px).")
+    font_size_scale = models.DecimalField(
+        max_digits=4, decimal_places=2, default=Decimal("1.250"),
+        help_text="Heading scale factor (1.250 = Major Third).",
     )
-    font_family = models.CharField(
-        max_length=100,
-        default="Inter",
-        help_text="Font family name (e.g. 'Inter', 'Roboto').",
-    )
+
+    # ── Spacing ──────────────────────────────────────────────────────
+    section_padding_y = models.CharField(max_length=10, default="4rem",
+        help_text="Vertical section padding (e.g. 4rem, 64px).")
+    card_padding = models.CharField(max_length=10, default="1.5rem",
+        help_text="Inner card padding.")
+    container_max_width = models.CharField(max_length=10, default="1280px",
+        help_text="Max page width.")
+
+    # ── Border radius ────────────────────────────────────────────────
+    radius_sm = models.CharField(max_length=10, default="0.25rem")
+    radius_md = models.CharField(max_length=10, default="0.5rem")
+    radius_lg = models.CharField(max_length=10, default="0.75rem")
+    radius_full = models.CharField(max_length=10, default="9999px")
+
+    # ── Shadows ──────────────────────────────────────────────────────
+    shadow_sm = models.CharField(max_length=50, default="0 1px 2px 0 rgb(0 0 0 / 0.05)")
+    shadow_md = models.CharField(max_length=50, default="0 4px 6px -1px rgb(0 0 0 / 0.1)")
+    shadow_lg = models.CharField(max_length=50, default="0 10px 15px -3px rgb(0 0 0 / 0.1)")
+
+    # ── Announcement bar (Phase 3) ───────────────────────────────────
+    announcement_enabled = models.BooleanField(default=False)
+    announcement_text = models.CharField(max_length=500, blank=True, default="")
+
+    # ── Custom CSS (Phase 3) ─────────────────────────────────────────
+    custom_css = models.TextField(blank=True, default="",
+        help_text="Raw CSS injected via <style> tag. Overrides any token above.")
 
     class Meta:
         db_table = "store_storetheme"

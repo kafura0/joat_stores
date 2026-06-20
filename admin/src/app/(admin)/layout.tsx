@@ -27,19 +27,18 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { accessToken, user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const [isReady, setIsReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     async function hydrate() {
+      const { accessToken } = useAuthStore.getState();
       if (accessToken) {
-        // Already have a token in memory — ready to render
         setIsReady(true);
         return;
       }
 
-      // No token — try silent refresh from httpOnly cookie
       const newToken = await performRefresh();
       if (!newToken) {
         router.replace("/login");
@@ -50,7 +49,7 @@ export default function AdminLayout({
     }
 
     hydrate();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router])
 
   // While hydrating, render nothing (middleware already redirected if no cookie)
   if (!isReady) {

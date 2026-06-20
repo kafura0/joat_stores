@@ -7,11 +7,15 @@
 
 ## What This Is
 
-joat_stores is not a store builder. It is **commerce infrastructure** — a self-hosted, multi-tenant headless commerce engine that lets African SMEs launch branded online stores, accept local payments, manage their business, and grow with analytics-driven intelligence.
+joat_stores is **commerce infrastructure** — a self-hosted, **B2B2C** multi-tenant headless commerce engine.
+
+The platform operator (you) hosts the infrastructure. Store owners (SMEs) launch branded online stores on top. Customers purchase from those stores. Each layer is fully isolated:
+
+- **B (Business — Store Owners)** → Manage products, orders, staff, subscriptions
+- **B (Platform — You)** → Provision stores, set pricing, monitor across tenants
+- **C (Customers)** → Browse storefronts, order, pay via M-Pesa, earn loyalty points
 
 Built for Kenyan merchants first. Designed to scale across Africa.
-
-This is the platform Instagram sellers, TikTok sellers, fashion retailers, electronics shops, and physical-to-digital businesses never had — affordable, locally-optimized, and owned outright.
 
 ---
 
@@ -58,17 +62,30 @@ One Django backend powers N independent storefronts via domain-based tenant reso
 - Subscription tier enforcement (Basic / Growth / Pro)
 - Platform Admin panel with full multi-store visibility
 
-### 🛒 Commerce Engine
+### 🎨 Theme Engine (Shopify-Level Storefront Theming)
+
+Every store gets a fully customizable theme without touching code:
+
+- **Design Token System** — 30+ CSS custom properties (colors, typography, spacing, border radius, shadows)
+- **5 Preset Packs** — Modern, Classic, Minimal, Bold, Vibrant — apply with one click
+- **Layout Templates** — 3 header variants (Centered, Split, Minimal) + 3 footer variants (Columns, Simple, Minimal), mapped per preset
+- **Custom CSS Injection** — merchant-written CSS injected at runtime via inline `<style>`
+- **Announcement Bar** — toggleable banner with custom text and accent colour
+- **Admin Theme Config Page** — full visual editor at `/settings` with colour pickers, font dropdowns, live preview button
+- **REST API** — `GET/PATCH /themes/`, `GET /themes/presets/`, `POST /themes/apply-preset/`
+
+### 🛒 Commerce Engine (B2B2C Customer Purchases)
 
 **Products**
 - Product catalog with categories, attributes, and variants
-- Dynamic attribute system (size, color, material — per store)
+- Dynamic attribute system (size, colour, material — per store)
 - SKU management and inventory tracking
 - Media management (images per variant)
 - Soft delete system with audit fields
 
 **Orders**
 - Full order lifecycle: created → confirmed → fulfilled → completed
+- Denormalized `items_snapshot` (JSON) — no separate line-items table
 - Status transitions with timestamps
 - Payment confirmation hooks
 - Refund handling
@@ -83,24 +100,25 @@ One Django backend powers N independent storefronts via domain-based tenant reso
 ### 💳 Payments
 
 - **M-Pesa integration** (primary — STK Push, C2B, B2C)
-- Card payments (provider-agnostic scaffold)
+- Card payments (provider-agnostic scaffold - Story 2.6)
 - Webhook verification and idempotency
 - Payment records with provider reference tracking
 - Fraud detection logic scaffold
 - *Future:* Wallet system, store credit, split payments
 
-### 👥 Users & Roles
+### 👥 Users & Roles (B2B2C)
 
-| Role | Scope |
-|---|---|
-| Platform Admin | Full platform — all stores, all tenants |
-| Store Owner | Single store — full access |
-| Store Manager | Single store — operational access |
-| Customer | Store-scoped — own orders and profile |
+| Role | Scope | B2B2C Layer |
+|---|---|---|
+| Platform Admin | Full platform — all stores, all tenants | Platform |
+| Store Owner | Single store — full access | Business |
+| Store Manager | Single store — operational access | Business |
+| Customer | Store-scoped — own orders and profile | Consumer |
 
 - JWT authentication (short-lived access + refresh tokens)
 - Object-level permission enforcement
 - Feature access gated per subscription plan
+- `IsStoreManager` + `HasStore` permission classes replace manual store checks
 
 ### 📊 Analytics Engine (Core Differentiator)
 
@@ -122,9 +140,9 @@ One Django backend powers N independent storefronts via domain-based tenant reso
 - Revenue per subscription tier
 - Feature usage tracking
 
-### 🤖 AI Engine (Architecture-Ready)
+All analytics read from pre-aggregated `DailyRevenueSummary` + `HourlyOrderSummary` — never live ORM aggregates.
 
-The AI module is scaffolded from day one — no logic at MVP, full extension surface for Phase 3.
+### 🤖 AI Engine (Architecture-Ready)
 
 | Module | Capability |
 |---|---|
@@ -133,23 +151,59 @@ The AI module is scaffolded from day one — no logic at MVP, full extension sur
 | Inventory Forecasting | Predict stock-outs, suggest reorder quantities |
 | Customer Segmentation | High-value, at-risk churn, discount-sensitive buyer segments |
 
+### 🍽️ Restaurant Module
+
+- Digital menu management with sections, modifiers, modifier groups
+- Public menu URL (QR-code friendly)
+- HMAC-signed QR table tokens (anti-tamper)
+- TableSession state machine with waiter assignment
+- Dine-in ordering: customer scans → browses → orders → pays at table
+- Kitchen ticket generation (denormalized, printer-ready)
+- PendingOrder — waiter intermediary screen
+- Pre-order with advance M-Pesa payment
+- Reservation booking
+- Takeaway order type
+- Bill split (shared, percentage, item-level)
+- Age-restricted item flagging (FR4 cross-epic tenant-type lock)
+
+### 🍸 Bar Module
+
+- Open/close tab state machine
+- Round ordering (multiple drinks on one tab)
+- Happy-hour pricing with time-window snapshots
+- Age-restricted item enforcement + AgeRestrictionLog
+- Tab split settlement via M-Pesa
+
+### 🔧 Contracting Module
+
+- Service catalog per store (contracting tenant-type)
+- Service booking with availability calendar
+- Quote request → quote acceptance/rejection workflow
+- Job milestones with completion photos
+- Invoice generation with WhatsApp-shareable PDF
+- Invoice payment collection
+
 ### ⚡ Async & Background Jobs (Celery + Redis)
+
+Dedicated queues: `order.notifications`, `inventory.alerts`, `billing.reminders`, `payments.reconciliation`, `analytics.reports`
 
 - Order confirmation emails
 - Low-stock alert detection and supplier notifications
 - Inventory sync tasks
-- Scheduled reporting
-- Dead-letter queue + retry logic
-- Worker health monitoring
+- Scheduled reporting (daily/hourly aggregation)
+- Dead-letter queue + exponential backoff retry
+- Worker health monitoring endpoint
 
 ### 🔒 Security
 
 - JWT + httpOnly secure cookies
-- Role-based access control (RBAC) with store-scoped enforcement
-- Request throttling and rate limiting
+- Role-based access control (RBAC) via JWT `role` claim — never `is_staff`/`is_superuser`
+- Explicit `permission_classes` on every view — no DRF defaults relied upon
+- Request throttling (per-store plan-based rate limits)
 - CORS restrictions with domain whitelist
 - Encrypted secrets via environment variables
-- Structured audit logging on all business models
+- Structured audit logging (`AdminPIIAccessLog`)
+- OWASP Top 10 + Kenya DPA 2019 compliance
 
 ### 🏪 Supplier Communication Module
 
@@ -159,17 +213,32 @@ The AI module is scaffolded from day one — no logic at MVP, full extension sur
 - Supplier notification emails (async)
 - Restock request records with status tracking
 
+### 💳 SaaS Subscription Management
+
+- Plan model with feature flags and resource limits (Basic / Growth / Pro)
+- StoreSubscription lifecycle: trial → active → past_due → suspended → cancelled
+- M-Pesa subscription renewal
+- Automated suspension + PII anonymisation on cancellation
+- Plan limit enforcement at API layer
+
+### 🎯 Customer Loyalty & Engagement
+
+- Points-based loyalty accounts with transaction history
+- Stamp cards — automatic reward on threshold
+- WhatsApp notification dispatch
+- Unified customer profile (RFM segmentation)
+- WhatsApp ordering bridge
+
 ### 🐳 Infrastructure
 
-- Docker Compose (backend, redis, celery, celery-beat, storefronts)
+- Docker Compose (Django, Postgres, Redis, Celery, Celery Beat, Flower, Nginx)
 - Internal Docker network — no external port exposure except Nginx proxy
 - Nginx reverse proxy with per-store domain config
-- Zero conflict with existing VPS services
 - Non-root containers, environment variable validation on startup
-- PostgreSQL on isolated database (separate from existing services)
-- Volume management for DB data, media, and static files
+- PostgreSQL with volume management
+- Redis AOF persistence
 - Health check endpoint (`/health/`)
-- Gunicorn with production Django settings
+- Gunicorn + Uvicorn with production Django settings
 
 ---
 
@@ -199,9 +268,9 @@ The AI module is scaffolded from day one — no logic at MVP, full extension sur
 
 ---
 
-## 12-Month Roadmap
+## Roadmap (Status: June 2026)
 
-**Phase 1 — MVP (Month 1–3)**
+**Phase 1 — MVP ✅ (Month 1–3)**
 - Multi-store engine live with 2+ tenant storefronts
 - M-Pesa payments operational (retail + F&B)
 - Basic analytics dashboard
@@ -209,20 +278,20 @@ The AI module is scaffolded from day one — no logic at MVP, full extension sur
 - Platform admin operational
 - Third tenant onboarded in < 24 hours (investor demo)
 
-**Phase 2 — SaaS (Month 4–6)**
-- Live SaaS billing via M-Pesa
-- Advanced analytics dashboard
-- AI recommendation engine (first model)
-- Merchant self-service onboarding portal
-- SSE real-time kitchen updates
+**Phase 2 — Theme Engine + Security ✅ (Month 3–5)**
+- Full theme customization (design tokens, 5 presets, 3 header/3 footer variants)
+- Admin theme config page at `/settings`
+- Security audit: explicit permission classes on all 37+ views across 6 apps
+- Custom CSS injection + announcement bar
+- `seed_demo` fixed, Docker ports exposed, TenantMiddleware hardened
 
-**Phase 3 — Scale (Month 7–12)**
-- Marketplace features
-- Vendor onboarding flow
+**Phase 3 — Scale (Next)**
+- Multi-provider card payments (Stripe/Flutterwave)
+- Self-service merchant onboarding
+- AI engine to production (trained recommendation model)
 - POS integration
+- Wallet system + store credit
 - 5+ active merchant tenants
-- Investor-facing metrics dashboard
-- Full AI engine (dynamic pricing, forecasting, segmentation)
 
 ---
 
@@ -247,9 +316,40 @@ Not just stores. Infrastructure.
 
 ---
 
+## Future Recommendations
+
+### 🎯 Product
+- **Multi-provider card payments (Story 2.6)** — integrate Stripe or Flutterwave for card payments (currently a 501 scaffold)
+- **Wallet system** — store credit, split payments, customer wallets
+- **POS integration** — connect physical POS terminals with online inventory
+- **Marketplace mode** — allow third-party vendors to sell on a store's platform
+- **Self-service onboarding** — merchant registration without platform admin intervention
+- **SSE real-time kitchen updates** — push updates to restaurant displays
+
+### 🛠️ Engineering
+- **End-to-end test suite** — Playwright or Cypress for critical checkout paths
+- **Rate limit by subscription tier** — enforce plan-based API throttling limits
+- **Horizontal scaling** — separate read replicas, Celery worker autoscaling
+- **Full-text search** — Elasticsearch or Meilisearch for product search beyond PostgreSQL SearchVector
+- **WebSocket support** — real-time order status updates for customer dashboard
+
+### 🤖 AI (Scaffold → Production)
+- **Train recommendation model** — move from collaborative-filtering scaffold to a trained model with real customer data
+- **Dynamic pricing engine** — sales velocity and demand-based price suggestions
+- **Inventory forecasting** — predict stock-outs and suggest reorder quantities
+- **Customer segmentation** — RFM-based cohorts with automated marketing triggers
+
+### 🚀 Go-to-Market
+- **Production deployment** — deploy to Render + Vercel (configs in `render.yaml`)
+- **Seed with real merchants** — onboard 2–3 pilot stores
+- **Landing page** — joatstores.com with merchant signup
+- **Demo environment** — public demo store with sample data
+
+---
+
 ## Project Development Progress
 
-> **Status:** MVP **complete** — all 12 epics, all 83 stories implemented and committed to `main` (2026-03-14).
+> **Status:** MVP + Theme Engine (Phase 1–3) + Security Hardening **complete** (2026-06-20). All 12 MVP epics (83 stories) implemented, plus full theme customization system (design tokens, 5 presets, layout variants, custom CSS, announcement bar, admin config page) and security audit (explicit permission classes on 37+ views across 6 apps). B2B2C tenant model fully operational.
 
 ### Phase 0 — Planning & Architecture
 
@@ -455,4 +555,4 @@ Not just stores. Infrastructure.
 
 ---
 
-*Built by KAFURAHA — joat_stores © 2026*
+*Built by KAFURAHA*

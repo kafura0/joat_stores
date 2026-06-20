@@ -50,7 +50,9 @@
       "Bash(grep:*)",
       "Bash(git add:*)",
       "Bash(for app:*)",
-      "Read(//c/Users/User/Desktop/joat_websites/joat_stores/backend/apps/**)"
+      "Read(//c/Users/User/Desktop/joat_websites/joat_stores/backend/apps/**)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\User\\\\Desktop\\\\joat_websites\\\\joat_stores\\\\backend\" -Recurse -Filter \"migrations\" -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

@@ -18,14 +18,13 @@ import { useAuthStore } from "@/stores/authStore";
 
 export default function RootPage() {
   const router = useRouter();
-  const { accessToken, user } = useAuthStore();
 
   useEffect(() => {
     async function redirect() {
+      const { accessToken, user } = useAuthStore.getState();
       let role = user?.role;
 
       if (!accessToken || !role) {
-        // Attempt silent refresh to hydrate role
         const newToken = await performRefresh();
         if (!newToken) {
           router.replace("/login");
@@ -42,7 +41,7 @@ export default function RootPage() {
     }
 
     redirect();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">

@@ -15,11 +15,14 @@ Implementation: Story 1.4, Story 1.7
 from django.urls import path
 
 from apps.store.views import (
+    ApplyPresetView,
     BrandingView,
     OfflineInventorySnapshotView,
+    PresetListView,
     StoreListView,
     StoreProvisionView,
     StoreStatusUpdateView,
+    ThemeDetailView,
 )
 
 app_name = "store"
@@ -55,6 +58,22 @@ storefront_urlpatterns = [
         "offline-snapshot/",
         OfflineInventorySnapshotView.as_view(),
         name="offline-snapshot",
+    ),
+    # Phase 1-3 — Theme API (design tokens, presets, custom CSS)
+    path(
+        "themes/",
+        ThemeDetailView.as_view(),
+        name="theme-detail",
+    ),
+    path(
+        "themes/presets/",
+        PresetListView.as_view(),
+        name="theme-presets",
+    ),
+    path(
+        "themes/apply-preset/",
+        ApplyPresetView.as_view(),
+        name="theme-apply-preset",
     ),
 ]
 

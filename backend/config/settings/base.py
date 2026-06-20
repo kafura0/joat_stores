@@ -291,6 +291,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute=0),  # every hour on the hour
     },
     # Analytics tasks (Story 7.2 / Story 8.1)
+    "populate-current-hour-summary": {
+        "task": "apps.analytics.tasks.populate_current_hour_summary",
+        "schedule": crontab(minute=0),  # every hour on the hour
+    },
     "generate-daily-summary": {
         "task": "apps.analytics.tasks.generate_daily_summary",
         "schedule": crontab(hour=0, minute=5),  # 00:05 daily
