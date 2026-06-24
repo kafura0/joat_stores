@@ -156,7 +156,7 @@ class TabRound(TenantModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["tab", "round_number"],
-                name="uq_bar_tabround_tab_round_number",
+                name="uq_bar_tabround_number",
             )
         ]
 
@@ -277,7 +277,7 @@ class AgeRestrictionLog(TenantModel):
         indexes = [
             models.Index(
                 fields=["tab", "customer"],
-                name="idx_bar_agerestrictionlog_tab_customer",
+                name="bar_agelog_tab_customer",
             ),
         ]
 

@@ -93,7 +93,7 @@ class AvailabilitySlot(TenantModel):
         indexes = [
             models.Index(
                 fields=["store", "service", "start_time"],
-                name="idx_contracting_slot_service_time",
+                name="ct_slot_service_time",
             ),
         ]
 
@@ -131,7 +131,7 @@ class ServiceBooking(TenantModel):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["store", "status"], name="idx_contracting_booking_status"),
+            models.Index(fields=["store", "status"], name="ct_booking_status"),
         ]
 
     def __str__(self) -> str:
@@ -170,7 +170,7 @@ class QuoteRequest(TenantModel):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["store", "status"], name="idx_contracting_quotereq_status"),
+            models.Index(fields=["store", "status"], name="ct_quotereq_status"),
         ]
 
     def __str__(self) -> str:
@@ -404,7 +404,7 @@ class Invoice(TenantModel):
         ordering = ["-created_at"]
         indexes = [
             models.Index(
-                fields=["store", "payment_status"], name="idx_contracting_invoice_payment"
+                fields=["store", "payment_status"], name="ct_invoice_payment"
             ),
         ]
 

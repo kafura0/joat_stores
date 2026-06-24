@@ -180,7 +180,7 @@ class AIEvent(models.Model):
     class Meta:
         ordering = ["-occurred_at"]
         indexes = [
-            models.Index(fields=["store", "event_type", "occurred_at"], name="idx_analytics_aievent_store_type"),
+            models.Index(fields=["store", "event_type", "occurred_at"], name="an_aievent_store_type"),
         ]
 
     def save(self, *args, **kwargs):

@@ -32,7 +32,7 @@ class MenuSection(TenantModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["store", "name"],
-                name="uq_restaurant_menusection_store_name",
+                name="rst_msection_store_name",
             )
         ]
         indexes = [
@@ -199,7 +199,7 @@ class Table(TenantModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["store", "number"],
-                name="uq_restaurant_table_store_number",
+                name="rst_table_store_number",
             )
         ]
         indexes = [
@@ -280,17 +280,17 @@ class TableSession(TenantModel):
             models.UniqueConstraint(
                 fields=["table"],
                 condition=models.Q(status="OPEN"),
-                name="uq_restaurant_tablesession_one_open_per_table",
+                name="rst_tsess_one_open",
             )
         ]
         indexes = [
             models.Index(
                 fields=["store", "status"],
-                name="idx_rst_tablesession_store_status",
+                name="rst_tsess_store_status",
             ),
             models.Index(
                 fields=["table", "status"],
-                name="idx_rst_tablesession_table_status",
+                name="rst_tsess_table_status",
             ),
         ]
 
@@ -411,7 +411,7 @@ class DineInOrder(TenantModel):
         indexes = [
             models.Index(
                 fields=["store", "status"],
-                name="idx_rst_dineinorder_store_status",
+                name="rst_dinord_store_status",
             ),
             models.Index(
                 fields=["session"],
@@ -483,7 +483,7 @@ class KitchenTicket(TenantModel):
         indexes = [
             models.Index(
                 fields=["store", "status"],
-                name="idx_rst_kitchenticket_store_status",
+                name="rst_kittkt_store_status",
             ),
         ]
 
@@ -578,15 +578,15 @@ class PendingOrder(TenantModel):
         indexes = [
             models.Index(
                 fields=["store", "status"],
-                name="idx_rst_pendingorder_store_status",
+                name="rst_porder_store_status",
             ),
             models.Index(
                 fields=["store", "pin", "status"],
-                name="idx_rst_pendingorder_store_pin_status",
+                name="rst_porder_store_pin_status",
             ),
             models.Index(
                 fields=["store", "phone", "status"],
-                name="idx_rst_pendingorder_store_phone_status",
+                name="rst_porder_store_phone_status",
             ),
         ]
 
@@ -667,11 +667,11 @@ class Reservation(TenantModel):
         indexes = [
             models.Index(
                 fields=["store", "status"],
-                name="idx_rst_reservation_store_status",
+                name="rst_reserv_store_status",
             ),
             models.Index(
                 fields=["store", "reserved_for"],
-                name="idx_rst_reservation_store_time",
+                name="rst_reserv_store_time",
             ),
         ]
 
@@ -748,7 +748,7 @@ class BillShare(TenantModel):
         indexes = [
             models.Index(
                 fields=["store", "session", "status"],
-                name="idx_rst_billshare_session_status",
+                name="rst_blshr_session_status",
             ),
         ]
 
