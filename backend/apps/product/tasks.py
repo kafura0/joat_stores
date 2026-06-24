@@ -35,8 +35,43 @@ def send_low_stock_alert(self, variant_id: str) -> None:
             inventory_count=variant.inventory_count,
             store_id=str(store.id),
         )
-        # TODO Story 4.6: send supplier notification email when email backend is configured
-        # For now: log only (WhatsApp/SMS stub in Story 10.3)
+
+        # Notify store owner via WhatsApp + email
+        from django.contrib.auth import get_user_model
+        from apps.notifications.tasks import send_whatsapp_notification
+
+        User = get_user_model()
+        owners = User.objects.filter(store=store, role="store_owner").only("phone", "email")[:2]
+
+        msg = (
+            f"Low stock alert for {variant.product.name} at {store.name}. "
+            f"Current inventory: {variant.inventory_count}. "
+            "Please reorder soon."
+        )
+
+        for owner in owners:
+            if owner.phone:
+                send_whatsapp_notification.delay(
+                    store_id=str(store.id),
+                    recipient_phone=owner.phone,
+                    message_body=msg,
+                    template="generic",
+                )
+            if owner.email:
+                try:
+                    from django.conf import settings
+                    from django.core.mail import send_mail
+
+                    if settings.EMAIL_HOST:
+                        send_mail(
+                            subject=f"Low Stock Alert: {variant.product.name}",
+                            message=msg,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[owner.email],
+                            fail_silently=True,
+                        )
+                except Exception:
+                    log.exception("low_stock_email_failed", variant_id=variant_id)
 
     except Exception as exc:
         log.error("low_stock_alert_failed", variant_id=variant_id, error=str(exc))

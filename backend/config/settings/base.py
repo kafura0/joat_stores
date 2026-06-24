@@ -63,6 +63,7 @@ LOCAL_APPS = [
     "apps.saas",
     "apps.ai",
     "apps.loyalty",
+    "apps.customer_hub",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -368,6 +369,18 @@ MPESA_SECURITY_CREDENTIAL = env("MPESA_SECURITY_CREDENTIAL", default="")
 # QR Token (Story 3.3, 4.1)
 # ---------------------------------------------------------------------------
 HMAC_QR_SECRET = env("HMAC_QR_SECRET", default="dev-qr-secret-change-in-prod")
+
+# ---------------------------------------------------------------------------
+# Email
+# ---------------------------------------------------------------------------
+DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@joatstores.com")
+
+# ---------------------------------------------------------------------------
+# Stripe (Card payments — Story 2.6)
+# ---------------------------------------------------------------------------
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 
 # ---------------------------------------------------------------------------
 # Twilio (WhatsApp notifications — Story 10.3)

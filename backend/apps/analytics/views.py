@@ -12,6 +12,7 @@ Story 8.7: First order milestone surfaced in platform store detail
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.db import models
 from django.db.models import Avg, Sum
 from django.utils import timezone
 
@@ -307,9 +308,15 @@ class PlatformUnitEconomicsView(APIView):
         if active_tenant_count == 0:
             return Response({"cost_per_tenant": None, "revenue_per_tenant": None, "active_tenants": 0})
 
-        # Revenue: sum all subscription revenues for active stores
-        # (stub — full implementation in Epic 9 with StoreSubscription model)
-        total_sub_revenue = Decimal("0")  # TODO: Epic 9 — sum StoreSubscription.monthly_fee
+        # Revenue: sum subscription revenues for active stores
+        from apps.saas.models import StoreSubscription
+
+        total_sub_revenue = (
+            StoreSubscription.objects.filter(store__status=StoreStatus.ACTIVE)
+            .exclude(plan__isnull=True)
+            .aggregate(total=models.Sum("monthly_fee"))["total"]
+            or Decimal("0")
+        )
 
         # Infrastructure cost stub (placeholder for actual cost reporting)
         infra_cost_monthly = Decimal("50000")  # KES/month (placeholder)
@@ -323,7 +330,7 @@ class PlatformUnitEconomicsView(APIView):
                 "revenue_per_tenant": str(
                     (total_sub_revenue / active_tenant_count).quantize(Decimal("0.01"))
                 ),
-                "note": "Revenue per tenant requires Epic 9 subscription data.",
+                "note": "Revenue per tenant computed from StoreSubscription.monthly_fee.",
             }
         )
 

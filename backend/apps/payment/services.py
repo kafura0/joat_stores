@@ -205,3 +205,118 @@ def reverse_payment(transaction_id: str, reason: str) -> MpesaTransaction:
 
     log.info("payment_reversed", transaction_id=transaction_id, reason=reason)
     return txn
+
+
+# ---------------------------------------------------------------------------
+# Story 2.6 — Card payments (Stripe PaymentIntents)
+# ---------------------------------------------------------------------------
+
+
+def initiate_card_payment(
+    store,
+    amount,
+    reference: str,
+    provider: str = "stripe",
+    customer_email: str = "",
+) -> dict:
+    """
+    Create a Stripe PaymentIntent for a card payment.
+
+    Stores a CardTransaction record with the client_secret so the
+    storefront can complete the payment on the client side.
+
+    Args:
+        store: Store instance (from request.store via TenantMiddleware).
+        amount: Payment amount (Decimal or numeric string).
+        reference: Unique order identifier for this store.
+        provider: Card provider — currently only "stripe".
+        customer_email: Optional email for Stripe receipt.
+
+    Returns:
+        dict with client_secret, transaction_id, and amount.
+
+    Raises:
+        ValueError: Unsupported provider.
+        stripe.error.StripeError: Stripe API failure.
+    """
+    from decimal import Decimal
+
+    from django.conf import settings
+
+    from apps.payment.models import CardTransaction, CardTransactionStatus
+
+    if provider != "stripe":
+        raise ValueError(f"Unsupported card provider: {provider!r}. Only 'stripe' is supported.")
+
+    if not settings.STRIPE_SECRET_KEY:
+        raise ValueError("STRIPE_SECRET_KEY not configured — card payments unavailable.")
+
+    import stripe as stripe_lib
+    stripe_lib.api_key = settings.STRIPE_SECRET_KEY
+
+    amount_cents = int(Decimal(str(amount)) * 100)
+
+    intent = stripe_lib.PaymentIntent.create(
+        amount=amount_cents,
+        currency="kes",
+        metadata={
+            "store_id": str(store.id),
+            "reference": reference,
+        },
+        description=f"Payment for {reference} at {store.name}",
+        receipt_email=customer_email or None,
+    )
+
+    txn = CardTransaction.objects.create(
+        store=store,
+        reference=reference,
+        amount=amount,
+        status=CardTransactionStatus.PAYMENT_INTENT_CREATED,
+        stripe_payment_intent_id=intent.id,
+        stripe_client_secret=intent.client_secret or "",
+        provider=provider,
+        customer_email=customer_email,
+    )
+
+    log.info(
+        "card_payment_intent_created",
+        transaction_id=str(txn.id),
+        reference=reference,
+        payment_intent_id=intent.id,
+    )
+
+    return {
+        "transaction_id": str(txn.id),
+        "client_secret": intent.client_secret,
+        "amount": str(amount),
+        "currency": "kes",
+    }
+
+
+def confirm_card_payment(store, transaction_id: str) -> dict:
+    """
+    Retrieve the Stripe PaymentIntent status for a card transaction.
+
+    Used by the storefront after the PaymentIntent completes client-side
+    to confirm the backend has synced the status (via webhook).
+
+    Args:
+        store: Store instance for tenant scoping.
+        transaction_id: UUID string of the CardTransaction.
+
+    Returns:
+        dict with transaction status and payment intent ID.
+    """
+    from apps.payment.models import CardTransaction
+
+    try:
+        txn = CardTransaction.objects.get(id=transaction_id, store=store)
+    except CardTransaction.DoesNotExist:
+        raise ValueError("CardTransaction not found")
+
+    return {
+        "transaction_id": str(txn.id),
+        "status": txn.status,
+        "stripe_payment_intent_id": txn.stripe_payment_intent_id,
+        "amount": str(txn.amount),
+    }

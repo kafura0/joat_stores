@@ -42,6 +42,10 @@ class StoreTokenObtainPairSerializer(TokenObtainPairSerializer):
             token["store_id"] = str(user.store_id)
         else:
             token["store_id"] = None
+        if user.platform_user_id:
+            token["platform_user_id"] = str(user.platform_user_id)
+        else:
+            token["platform_user_id"] = None
         return token
 
     def validate(self, attrs):
@@ -83,5 +87,6 @@ class StoreTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "email": user.email,
                 "role": user.role,
                 "store_id": str(user.store_id) if user.store_id else None,
+                "platform_user_id": str(user.platform_user_id) if user.platform_user_id else None,
             },
         }

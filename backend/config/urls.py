@@ -52,6 +52,8 @@ urlpatterns = [
     path("api/v1/ai/", include("apps.ai.urls", namespace="ai")),  # Epic 9.5 scaffold / Epic 11
     path("api/v1/loyalty/", include("apps.loyalty.urls", namespace="loyalty")),  # Epic 10
     path("api/v1/notifications/", include("apps.notifications.urls", namespace="notifications")),  # Epic 10
+    # Customer Hub — cross-tenant portal
+    path("api/v1/hub/", include("apps.customer_hub.urls")),
     # Allauth — Story 1.5
     path("accounts/", include("allauth.urls")),
 ]

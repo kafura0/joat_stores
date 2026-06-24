@@ -3,6 +3,7 @@ Notifications models — Epic 10.
 
 Story 10.3: WhatsAppMessage — outbound message log (append-only)
 Story 10.5: WhatsApp ordering bridge — inbound message parsing log
+FCM (cross-tenant): FCMDevice — push notification device registration
 """
 
 from django.db import models
@@ -78,3 +79,53 @@ class WhatsAppInboundMessage(TenantModel):
 
     class Meta:
         ordering = ["-received_at"]
+
+
+# ---------------------------------------------------------------------------
+# FCM push notifications (cross-tenant customer hub)
+# ---------------------------------------------------------------------------
+
+
+class FCMDevice(models.Model):
+    """
+    A mobile device registered for push notifications.
+
+    NOT a tenant model — devices are cross-tenant, linked to PlatformUser.
+    One PlatformUser can have multiple devices (phone + tablet, Android + iOS).
+    """
+
+    PLATFORM_ANDROID = "android"
+    PLATFORM_IOS = "ios"
+    PLATFORM_WEB = "web"
+
+    PLATFORM_CHOICES = [
+        (PLATFORM_ANDROID, _("Android")),
+        (PLATFORM_IOS, _("iOS")),
+        (PLATFORM_WEB, _("Web")),
+    ]
+
+    platform_user = models.ForeignKey(
+        "users.PlatformUser",
+        on_delete=models.CASCADE,
+        related_name="fcm_devices",
+    )
+    registration_id = models.TextField(
+        help_text="FCM device token from the mobile app.",
+    )
+    platform = models.CharField(
+        max_length=10,
+        choices=PLATFORM_CHOICES,
+        default=PLATFORM_ANDROID,
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("FCM Device")
+        verbose_name_plural = _("FCM Devices")
+        ordering = ["-created_at"]
+        unique_together = [("platform_user", "registration_id")]
+
+    def __str__(self):
+        return f"{self.platform}:{self.registration_id[:16]}... @ {self.platform_user.email}"

@@ -1,6 +1,6 @@
 """Payment views.
 
-Implementation: Story 2.2, Story 2.3, Story 2.5, Story 4.7
+Implementation: Story 2.2, Story 2.3, Story 2.5, Story 2.6, Story 4.7
 """
 
 import hashlib
@@ -11,7 +11,7 @@ from django.conf import settings
 
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from core.permissions import IsStoreManager
+from core.permissions import IsStoreManager, IsStoreScoped
 
 log = structlog.get_logger(__name__)
 from rest_framework.response import Response
@@ -166,26 +166,134 @@ class ReversePaymentView(APIView):
         )
 
 
-class CardPaymentScaffoldView(APIView):
+class CardPaymentInitiateView(APIView):
     """
-    Story 4.7 — Card payment scaffold (Stripe + Flutterwave).
-
     POST /api/v1/payments/card/initiate/
-    Body: {"provider": "stripe" | "flutterwave", ...}
 
-    Returns HTTP 501 — card payments are scaffolded but not yet live.
-    Endpoints appear in OpenAPI schema with 501 response documented.
-    Activation requires only provider implementation, no URL changes.
+    Story 2.6 — Initiate a Stripe card payment.
+    Body: {"provider": "stripe", "amount": "1500.00", "reference": "ORD-123", "customer_email": "..."}
+
+    Returns a client_secret for the storefront to complete payment via
+    Stripe Elements / PaymentElement.
     """
+
+    permission_classes = [IsStoreScoped]
 
     def post(self, request):
         provider = request.data.get("provider", "").lower()
-        if provider not in ("stripe", "flutterwave"):
+        if provider not in ("stripe",):
             return Response(
-                {"errors": [{"code": "INVALID_PROVIDER", "message": "Use 'stripe' or 'flutterwave'."}]},
+                {"errors": [{"code": "INVALID_PROVIDER", "message": "Use 'stripe'."}]},
                 status=400,
             )
-        return Response(
-            {"detail": "CARD_PAYMENT_NOT_LIVE"},
-            status=501,
-        )
+
+        amount = request.data.get("amount")
+        reference = request.data.get("reference", "")
+        customer_email = request.data.get("customer_email", "")
+
+        if not amount:
+            return Response(
+                {"errors": [{"code": "AMOUNT_REQUIRED", "message": "amount is required"}]},
+                status=400,
+            )
+        if not reference:
+            return Response(
+                {"errors": [{"code": "REFERENCE_REQUIRED", "message": "reference is required"}]},
+                status=400,
+            )
+
+        from apps.payment.services import initiate_card_payment
+
+        try:
+            result = initiate_card_payment(
+                store=request.store,
+                amount=amount,
+                reference=reference,
+                provider=provider,
+                customer_email=customer_email,
+            )
+        except ValueError as exc:
+            return Response(
+                {"errors": [{"code": "CARD_PAYMENT_ERROR", "message": str(exc)}]},
+                status=400,
+            )
+        except Exception as exc:
+            log.exception("card_payment_initiation_error", reference=reference)
+            return Response(
+                {"errors": [{"code": "PAYMENT_GATEWAY_ERROR", "message": "Card payment could not be initiated."}]},
+                status=502,
+            )
+
+        return Response(result, status=200)
+
+
+class StripeWebhookView(APIView):
+    """
+    POST /api/v1/payments/stripe-webhook/
+
+    Stripe webhook endpoint for PaymentIntent events.
+    Validates signature, then updates CardTransaction status.
+    Returns HTTP 200 immediately.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        from django.conf import settings
+
+        import stripe as stripe_lib
+        stripe_lib.api_key = settings.STRIPE_SECRET_KEY
+
+        payload = request.body
+        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+
+        try:
+            event = stripe_lib.Webhook.construct_event(
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+            )
+        except ValueError:
+            return Response({"error": "Invalid payload"}, status=400)
+        except stripe_lib.error.SignatureVerificationError:
+            return Response({"error": "Invalid signature"}, status=400)
+
+        from apps.payment.models import CardTransaction, CardTransactionStatus
+
+        if event["type"] == "payment_intent.succeeded":
+            intent = event["data"]["object"]
+            _update_card_txn(intent["id"], CardTransactionStatus.SUCCEEDED)
+            log.info("stripe_payment_succeeded", payment_intent_id=intent["id"])
+
+        elif event["type"] == "payment_intent.payment_failed":
+            intent = event["data"]["object"]
+            reason = intent.get("last_payment_error", {}).get("message", "")
+            _update_card_txn(
+                intent["id"],
+                CardTransactionStatus.FAILED,
+                failure_reason=reason,
+            )
+            log.info("stripe_payment_failed", payment_intent_id=intent["id"], reason=reason)
+
+        elif event["type"] == "payment_intent.processing":
+            intent = event["data"]["object"]
+            _update_card_txn(intent["id"], CardTransactionStatus.PROCESSING)
+
+        return Response({"status": "ok"})
+
+
+def _update_card_txn(payment_intent_id: str, status, failure_reason: str = "") -> None:
+    """Update a CardTransaction status by Stripe PaymentIntent ID."""
+    from django.utils import timezone
+
+    from apps.payment.models import CardTransaction, CardTransactionStatus
+
+    try:
+        txn = CardTransaction.objects.get(stripe_payment_intent_id=payment_intent_id)
+        txn.status = status
+        if status == CardTransactionStatus.SUCCEEDED:
+            txn.completed_at = timezone.now()
+        if failure_reason:
+            txn.failure_reason = failure_reason
+        txn.save(update_fields=["status", "completed_at", "failure_reason"])
+    except CardTransaction.DoesNotExist:
+        log.warning("card_txn_not_found_for_intent", payment_intent_id=payment_intent_id)

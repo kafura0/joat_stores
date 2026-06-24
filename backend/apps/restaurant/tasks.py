@@ -105,13 +105,21 @@ def send_reservation_notification(self, reservation_id: str, event: str):
 
     message = messages.get(event, "Reservation update from " + reservation.store.name)
 
-    # TODO (Story 10.3): Replace with real WhatsApp/SMS dispatch via notification module.
+    # Dispatch via WhatsApp notification module
+    from apps.notifications.tasks import send_whatsapp_notification
+
+    send_whatsapp_notification.delay(
+        store_id=str(reservation.store_id),
+        recipient_phone=reservation.customer_phone,
+        message_body=message,
+        template="generic",
+    )
+
     log.info(
-        "reservation_notification_stub",
+        "reservation_notification_sent",
         reservation_id=reservation_id,
         event=event,
         phone=reservation.customer_phone,
-        message=message,
     )
 
     return {"sent": True, "event": event, "phone": reservation.customer_phone}
@@ -158,7 +166,25 @@ def send_takeaway_pickup_reference(self, order_id: str):
     order.pickup_reference = ref
     order.save(update_fields=["pickup_reference"])
 
-    # TODO (Story 10.3): Send WhatsApp/SMS to customer phone
+    # Send WhatsApp notification to customer
+    from apps.notifications.tasks import send_whatsapp_notification
+
+    store = order.store
+    phone = ""
+    if order.payment_transaction:
+        phone = order.payment_transaction.phone
+    msg = (
+        f"Your takeaway order is confirmed! Pickup reference: {ref}. "
+        f"Please collect from {store.name}."
+    )
+    if phone:
+        send_whatsapp_notification.delay(
+            store_id=str(store.id),
+            recipient_phone=phone,
+            message_body=msg,
+            template="order_confirmation",
+        )
+
     log.info(
         "takeaway_pickup_reference_generated",
         order_id=order_id,
@@ -179,20 +205,39 @@ def send_takeaway_pickup_reference(self, order_id: str):
 def notify_takeaway_ready(self, order_id: str):
     """
     Story 3.10 — Notify customer when takeaway order status → READY.
-
-    TODO (Story 10.3): Replace with real WhatsApp/SMS dispatch.
     """
     from apps.restaurant.models import DineInOrder
 
     try:
-        order = DineInOrder.objects.select_related("store").get(id=order_id)
+        order = DineInOrder.objects.select_related("store", "payment_transaction").get(id=order_id)
     except DineInOrder.DoesNotExist:
         return
 
+    phone = ""
+    if order.payment_transaction:
+        phone = order.payment_transaction.phone
+
+    if not phone:
+        log.warning("takeaway_ready_no_phone", order_id=order_id)
+        return {"notified": False, "reason": "no_customer_phone"}
+
+    from apps.notifications.tasks import send_whatsapp_notification
+
+    msg = (
+        f"Your takeaway order ({order.pickup_reference or 'N/A'}) is ready! "
+        f"Please pick it up from {order.store.name}."
+    )
+    send_whatsapp_notification.delay(
+        store_id=str(order.store_id),
+        recipient_phone=phone,
+        message_body=msg,
+        template="order_confirmation",
+    )
+
     log.info(
-        "takeaway_ready_notification_stub",
+        "takeaway_ready_notified",
         order_id=order_id,
         pickup_reference=order.pickup_reference,
-        store=order.store.name,
+        phone=order.customer_phone,
     )
     return {"notified": True}

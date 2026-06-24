@@ -260,7 +260,25 @@ class GoogleOAuthCallbackView(APIView):
             return Response({"errors": [{"code": "EMAIL_NOT_PROVIDED_BY_GOOGLE"}]}, status=400)
 
         # get_or_create store-scoped customer account
-        from apps.users.models import User
+        from apps.users.models import PlatformUser, User
+
+        # Create or find the global PlatformUser by email
+        platform_user, _ = PlatformUser.objects.get_or_create(
+            email=email,
+            defaults={
+                "full_name": name,
+                "google_sub": profile.get("sub", ""),
+            },
+        )
+        # Update google_sub if it wasn't set before
+        if not platform_user.google_sub and profile.get("sub"):
+            platform_user.google_sub = profile.get("sub")
+            platform_user.save(update_fields=["google_sub"])
+
+        # Update name if we have one from Google
+        if name and not platform_user.full_name:
+            platform_user.full_name = name
+            platform_user.save(update_fields=["full_name"])
 
         user, created = User.objects.get_or_create(
             email=email,
@@ -270,8 +288,12 @@ class GoogleOAuthCallbackView(APIView):
                 "last_name": " ".join(name.split(" ")[1:]) if name else "",
                 "role": User.Role.CUSTOMER,
                 "is_active": True,
+                "platform_user": platform_user,
             },
         )
+        if not created and user.platform_user is None:
+            user.platform_user = platform_user
+            user.save(update_fields=["platform_user"])
 
         # Issue JWT
         from apps.users.serializers import StoreTokenObtainPairSerializer

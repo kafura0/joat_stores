@@ -35,6 +35,13 @@ services:
         value: ""
       - key: EMAIL_HOST_PASSWORD
         value: ""
+      # Stripe (Story 2.6) — set in dashboard
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
       # M-Pesa sandbox creds (replace with live for production)
       - key: MPESA_ENV
         value: sandbox
@@ -54,92 +61,75 @@ services:
         value: testapi
       - key: MPESA_SECURITY_CREDENTIAL
         value: ""
-      # Twilio WhatsApp notifications (Story 10.3) — leave blank to disable
+      # Twilio (Story 10.3) — leave blank to disable
       - key: TWILIO_ACCOUNT_SID
-        sync: false
+        value: ""
       - key: TWILIO_AUTH_TOKEN
-        sync: false
+        value: ""
       - key: TWILIO_WHATSAPP_FROM
-        sync: false
-      # QR code signing secret — generate a strong random value
+        value: ""
+      # QR code signing secret
       - key: HMAC_QR_SECRET
         generateValue: true
       # WhatsApp webhook verify token
       - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
         generateValue: true
 
-  - type: worker
-    name: joat-stores-celery
-    env: python
-    rootDir: backend
-    region: oregon
-    plan: free
-    buildCommand: pip install -r requirements/production.txt
-    startCommand: celery -A config.celery_app worker -l info -Q order.notifications,inventory.alerts,billing.reminders,payments.reconciliation,analytics.reports --concurrency=1
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.production
-      - key: PYTHON_VERSION
-        value: 3.10.14
-      - key: DJANGO_SECRET_KEY
-        fromService:
-          name: joat-stores-api
-          type: web
-          envVarKey: DJANGO_SECRET_KEY
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: CELERY_BROKER_URL
-        sync: false
-      - key: CELERY_RESULT_BACKEND
-        sync: false
-      - key: DJANGO_ALLOWED_HOSTS
-        value: localhost
-      - key: TWILIO_ACCOUNT_SID
-        fromService:
-          name: joat-stores-api
-          type: web
-          envVarKey: TWILIO_ACCOUNT_SID
-      - key: TWILIO_AUTH_TOKEN
-        fromService:
-          name: joat-stores-api
-          type: web
-          envVarKey: TWILIO_AUTH_TOKEN
-      - key: TWILIO_WHATSAPP_FROM
-        fromService:
-          name: joat-stores-api
-          type: web
-          envVarKey: TWILIO_WHATSAPP_FROM
-      - key: HMAC_QR_SECRET
-        fromService:
-          name: joat-stores-api
-          type: web
-          envVarKey: HMAC_QR_SECRET
-
-  - type: worker
-    name: joat-stores-celery-beat
-    env: python
-    rootDir: backend
-    region: oregon
-    plan: free
-    buildCommand: pip install -r requirements/production.txt
-    startCommand: celery -A config.celery_app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.production
-      - key: PYTHON_VERSION
-        value: 3.10.14
-      - key: DJANGO_SECRET_KEY
-        fromService:
-          name: joat-stores-api
-          type: web
-          envVarKey: DJANGO_SECRET_KEY
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: CELERY_BROKER_URL
-        sync: false
-      - key: CELERY_RESULT_BACKEND
-        sync: false
+# Background workers (Celery + Celery Beat) require Render Starter plan or higher.
+# To enable, uncomment below and change plan: free → plan: starter.
+#
+#  - type: worker
+#    name: joat-stores-celery
+#    env: python
+#    rootDir: backend
+#    region: oregon
+#    plan: starter
+#    buildCommand: pip install -r requirements/production.txt
+#    startCommand: celery -A config.celery_app worker -l info -Q order.notifications,inventory.alerts,billing.reminders,payments.reconciliation,analytics.reports --concurrency=1
+#    envVars:
+#      - key: DJANGO_SETTINGS_MODULE
+#        value: config.settings.production
+#      - key: PYTHON_VERSION
+#        value: 3.10.14
+#      - key: DJANGO_SECRET_KEY
+#        fromService:
+#          name: joat-stores-api
+#          type: web
+#          envVarKey: DJANGO_SECRET_KEY
+#      - key: DATABASE_URL
+#        sync: false
+#      - key: REDIS_URL
+#        sync: false
+#      - key: CELERY_BROKER_URL
+#        sync: false
+#      - key: CELERY_RESULT_BACKEND
+#        sync: false
+#      - key: DJANGO_ALLOWED_HOSTS
+#        value: localhost
+#
+#  - type: worker
+#    name: joat-stores-celery-beat
+#    env: python
+#    rootDir: backend
+#    region: oregon
+#    plan: starter
+#    buildCommand: pip install -r requirements/production.txt
+#    startCommand: celery -A config.celery_app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+#    envVars:
+#      - key: DJANGO_SETTINGS_MODULE
+#        value: config.settings.production
+#      - key: PYTHON_VERSION
+#        value: 3.10.14
+#      - key: DJANGO_SECRET_KEY
+#        fromService:
+#          name: joat-stores-api
+#          type: web
+#          envVarKey: DJANGO_SECRET_KEY
+#      - key: DATABASE_URL
+#        sync: false
+#      - key: REDIS_URL
+#        sync: false
+#      - key: CELERY_BROKER_URL
+#        sync: false
+#      - key: CELERY_RESULT_BACKEND
+#        sync: false

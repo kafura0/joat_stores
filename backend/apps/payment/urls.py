@@ -6,10 +6,11 @@ Implementation: Story 2.2, Story 2.3, Story 2.5
 from django.urls import path
 
 from apps.payment.views import (
-    CardPaymentScaffoldView,
+    CardPaymentInitiateView,
     InitiateStkPushView,
     MpesaCallbackView,
     ReversePaymentView,
+    StripeWebhookView,
 )
 
 app_name = "payment"
@@ -22,6 +23,7 @@ urlpatterns = [
         ReversePaymentView.as_view(),
         name="reverse-payment",
     ),
-    # Story 4.7 — Card payment scaffold (501 until provider implemented)
-    path("card/initiate/", CardPaymentScaffoldView.as_view(), name="card-initiate"),
+    # Story 2.6 — Card payments via Stripe
+    path("card/initiate/", CardPaymentInitiateView.as_view(), name="card-initiate"),
+    path("stripe-webhook/", StripeWebhookView.as_view(), name="stripe-webhook"),
 ]

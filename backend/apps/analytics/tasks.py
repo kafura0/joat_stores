@@ -14,6 +14,7 @@ from decimal import Decimal
 
 import structlog
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from core.tasks import DLQTask
@@ -105,6 +106,39 @@ def generate_daily_summary(self, target_date_str: str = None) -> None:
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
 
 
+def _compute_top_products(order_qs, limit: int = 5) -> list:
+    """Compute top-N products by revenue from a confirmed Order queryset.
+
+    Reads from items_snapshot JSON field. Returns list of
+    {product_id, name, revenue} sorted descending by revenue.
+    """
+    from collections import defaultdict
+
+    product_revenue: dict[str, dict] = defaultdict(lambda: {"name": "", "revenue": 0})
+    for order in order_qs.iterator(chunk_size=200):
+        for item in (order.items_snapshot or []):
+            pid = str(item.get("product_id", ""))
+            if not pid:
+                continue
+            product_revenue[pid]["name"] = item.get("name", "")
+            product_revenue[pid]["revenue"] += float(item.get("price", 0)) * int(item.get("quantity", 0))
+
+    sorted_products = sorted(
+        product_revenue.items(),
+        key=lambda x: x[1]["revenue"],
+        reverse=True,
+    )[:limit]
+
+    return [
+        {
+            "product_id": pid,
+            "name": data["name"],
+            "revenue": str(round(data["revenue"], 2)),
+        }
+        for pid, data in sorted_products
+    ]
+
+
 def _run_daily_summary(target_date) -> None:
     """Core aggregation logic — extracted for management command reuse (backfill)."""
     from datetime import timedelta
@@ -148,7 +182,7 @@ def _run_daily_summary(target_date) -> None:
                 "order_count": order_count,
                 "aov": aov,
                 "amount_usd": amount_usd,
-                "top_products": [],  # TODO: compute from items_snapshot
+                "top_products": _compute_top_products(qs),
             },
         )
 
@@ -205,8 +239,53 @@ def send_merchant_weekly_digest(self) -> None:
     Full email in Epic 12.
     """
     try:
+        from datetime import timedelta
+
+        from django.core.mail import send_mail
+        from django.db.models import Sum
+
+        from apps.analytics.models import DailyRevenueSummary
+        from apps.store.models import Store
+
         logger.info("send_merchant_weekly_digest_start")
-        # TODO: Epic 12 — query DailyRevenueSummary past 7 days, send digest email
+
+        cutoff = timezone.localdate() - timedelta(days=7)
+        stores = Store.objects.filter(status="active")
+
+        for store in stores:
+            summary = DailyRevenueSummary.objects.filter(
+                store=store, date__gte=cutoff
+            ).aggregate(
+                total_rev=Sum("total_revenue"),
+                total_orders=Sum("order_count"),
+            )
+            total_rev = summary["total_rev"] or 0
+            total_orders = summary["total_orders"] or 0
+
+            if total_orders == 0:
+                continue
+
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            owners = User.objects.filter(store=store, role="store_owner").only("email")[:2]
+            emails = [u.email for u in owners if u.email]
+            if not emails:
+                continue
+
+            send_mail(
+                subject=f"Weekly Digest — {store.name}",
+                message=(
+                    f"Hi {store.name} owner,\n\n"
+                    f"Here's your weekly summary (past 7 days):\n"
+                    f"  Revenue: KES {total_rev:,.0f}\n"
+                    f"  Orders: {total_orders}\n\n"
+                    f"See your full dashboard for more details."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=emails,
+                fail_silently=True,
+            )
+
         logger.info("send_merchant_weekly_digest_complete")
     except Exception as exc:
         logger.exception("send_merchant_weekly_digest_failed")

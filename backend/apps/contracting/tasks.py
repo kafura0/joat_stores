@@ -33,14 +33,26 @@ def send_booking_confirmation(self, booking_id: str) -> None:
         from apps.contracting.models import ServiceBooking
 
         booking = ServiceBooking.objects.select_related("service", "slot").get(id=booking_id)
+        # Dispatch WhatsApp notification
+        from apps.notifications.tasks import send_whatsapp_notification
+
+        msg = (
+            f"Booking confirmed for {booking.service.name} at "
+            f"{booking.slot.start_time.strftime('%d %b %Y, %H:%M')}. "
+            f"Reference: {booking.id}"
+        )
+        send_whatsapp_notification.delay(
+            store_id=str(booking.store_id),
+            recipient_phone=booking.customer_phone,
+            message_body=msg,
+            template="order_confirmation",
+        )
+
         logger.info(
-            "booking_confirmation",
+            "booking_confirmation_sent",
             booking_id=booking_id,
             customer_phone=booking.customer_phone,
-            service=booking.service.name,
-            slot_start=str(booking.slot.start_time),
         )
-        # TODO: send WhatsApp/SMS notification
     except Exception as exc:
         logger.exception("send_booking_confirmation_failed", booking_id=booking_id)
         raise
