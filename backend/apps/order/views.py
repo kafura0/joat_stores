@@ -342,13 +342,10 @@ class OrderConfirmView(APIView):
 
 class MerchantDashboardView(APIView):
     """
-    Story 4.3b — Merchant daily view: zero-navigation dashboard data.
+    Merchant dashboard data.
     GET /api/v1/store/dashboard/
 
-    Returns SSR-ready data: today's order count (from HourlyOrderSummary),
-    revenue, pending orders, active low-stock alerts. All queries are
-    tenant-scoped. Today aggregates come from pre-aggregated HourlyOrderSummary
-    (populated hourly) — never live Order table aggregates.
+    Returns data matching the admin frontend's IDashboardStats interface.
     """
 
     permission_classes = [IsStoreManager]
@@ -356,16 +353,17 @@ class MerchantDashboardView(APIView):
     def get(self, request):
         from decimal import Decimal
 
-        from django.db.models import Sum
+        from django.db.models import Sum, Count, Avg
         from django.utils import timezone
 
         from apps.analytics.models import HourlyOrderSummary
+        from apps.order.models import Order
 
         now = timezone.localtime()
         today = now.date()
         current_hour = now.hour
 
-        # Aggregate from pre-computed HourlyOrderSummary for today
+        # Today's stats from HourlyOrderSummary
         hourly_rows = HourlyOrderSummary.objects.filter(
             store=request.store, date=today, hour__lte=current_hour
         ).aggregate(
@@ -374,40 +372,101 @@ class MerchantDashboardView(APIView):
         )
         today_count = hourly_rows["total_order_count"] or 0
         today_revenue = hourly_rows["total_revenue"] or Decimal("0")
+        today_avg = (
+            str(Decimal(str(today_revenue)) / today_count) if today_count > 0 else "0.00"
+        )
 
-        pending_orders = Order.objects.filter(
-            store=request.store, status=OrderStatus.PENDING
-        ).order_by("-created_at")[:20]
+        # Month stats
+        month_start = today.replace(day=1)
+        monthly = HourlyOrderSummary.objects.filter(
+            store=request.store, date__gte=month_start, date__lte=today
+        ).aggregate(
+            total_order_count=Sum("order_count"),
+            total_revenue=Sum("revenue"),
+        )
+        month_revenue = monthly["total_revenue"] or Decimal("0")
+        month_count = monthly["total_order_count"] or 0
 
-        # Low-stock alerts: variants at or below threshold
-        from apps.product.models import Variant, DEFAULT_LOW_STOCK_THRESHOLD
+        # Product count
+        from apps.product.models import Product, Variant, DEFAULT_LOW_STOCK_THRESHOLD
         from apps.store.models import StoreSettings
 
+        total_products = Product.objects.filter(
+            store=request.store, is_available=True
+        ).count()
+
+        # Low stock
         try:
             threshold = StoreSettings.objects.get(store=request.store).low_stock_threshold
         except StoreSettings.DoesNotExist:
             threshold = DEFAULT_LOW_STOCK_THRESHOLD
 
-        low_stock = Variant.objects.filter(
+        low_stock_count = Variant.objects.filter(
             store=request.store,
             inventory_count__lte=threshold,
             is_available=True,
-        ).select_related("product")[:50]
+        ).count()
+
+        # Active customers
+        from apps.users.models import User
+        active_customers = User.objects.filter(
+            store=request.store,
+            role=User.Role.CUSTOMER,
+            is_active=True,
+        ).count()
+
+        # Recent orders
+        recent_orders = Order.objects.filter(
+            store=request.store,
+        ).order_by("-created_at")[:10]
+
+        from apps.order.serializers import OrderSerializer
+
+        # Top products (by revenue today)
+        from apps.order.models import CartSnapshot
+        top_products = []
+        today_orders = Order.objects.filter(
+            store=request.store,
+            created_at__date=today,
+        )
+        product_revenue = {}
+        for order in today_orders:
+            for item in order.items_snapshot:
+                pid = item.get("product_id", "")
+                pname = item.get("product_id", "Unknown")
+                qty = item.get("quantity", 0)
+                price = Decimal(str(item.get("price", "0")))
+                if pid not in product_revenue:
+                    product_revenue[pid] = {"product_name": pname, "quantity_sold": 0, "revenue": Decimal("0")}
+                product_revenue[pid]["quantity_sold"] += qty
+                product_revenue[pid]["revenue"] += price * qty
+
+        # Sort by revenue and take top 5
+        sorted_products = sorted(
+            product_revenue.values(),
+            key=lambda x: x["revenue"],
+            reverse=True,
+        )[:5]
+        top_products = [
+            {
+                "product_name": p["product_name"],
+                "quantity_sold": p["quantity_sold"],
+                "revenue": str(p["revenue"]),
+            }
+            for p in sorted_products
+        ]
 
         return Response({
-            "today": {
-                "order_count": today_count,
-                "revenue": str(today_revenue),
-            },
-            "pending_orders": OrderSerializer(pending_orders, many=True).data,
-            "low_stock_alerts": [
-                {
-                    "variant_id": str(v.id),
-                    "product_name": v.product.name,
-                    "attribute_values": v.attribute_values,
-                    "inventory_count": v.inventory_count,
-                    "sku": v.sku,
-                }
-                for v in low_stock
-            ],
+            "data": {
+                "today_revenue": str(today_revenue),
+                "today_transactions": today_count,
+                "today_avg_order": today_avg,
+                "month_revenue": str(month_revenue),
+                "month_transactions": month_count,
+                "total_products": total_products,
+                "low_stock_count": low_stock_count,
+                "active_customers": active_customers,
+                "recent_orders": OrderSerializer(recent_orders, many=True).data,
+                "top_products": top_products,
+            }
         })
