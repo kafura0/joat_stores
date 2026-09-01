@@ -14,7 +14,7 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ open, onClose }: PaymentModalProps) {
-  const { total, payment_method, setPaymentMethod, clearCart } =
+  const { total: getTotal, payment_method, setPaymentMethod, clearCart } =
     useCartStore();
   const checkout = useCheckout();
   const addToast = useUIStore((s) => s.addToast);
@@ -22,7 +22,10 @@ export function PaymentModal({ open, onClose }: PaymentModalProps) {
 
   const change =
     payment_method === "cash"
-      ? Math.max(0, parseFloat(cashReceived || "0") - parseFloat(total))
+      ? Math.max(
+          0,
+          parseFloat(cashReceived || "0") - parseFloat(getTotal())
+        )
       : 0;
 
   const handlePayment = async () => {
@@ -42,7 +45,7 @@ export function PaymentModal({ open, onClose }: PaymentModalProps) {
       <div className="space-y-4">
         <div className="text-center">
           <p className="text-sm text-gray-500">Total Due</p>
-          <p className="text-3xl font-bold">{formatCurrency(total)}</p>
+          <p className="text-3xl font-bold">{formatCurrency(getTotal())}</p>
         </div>
 
         <div className="grid grid-cols-3 gap-2">

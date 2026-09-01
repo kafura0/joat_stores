@@ -107,6 +107,7 @@ export default function InventoryPage() {
             },
           ]}
           data={items}
+          keyAccessor={(item) => item.variant_id}
           emptyMessage="No inventory items found"
         />
       )}

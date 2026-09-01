@@ -12,14 +12,18 @@ interface DataTableProps<T> {
   data: T[];
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
+  keyAccessor?: (item: T) => string | number;
 }
 
-export function DataTable<T extends { id: string | number }>({
+export function DataTable<T>({
   columns,
   data,
   onRowClick,
   emptyMessage = "No data found",
+  keyAccessor,
 }: DataTableProps<T>) {
+  const getKey = keyAccessor ?? ((item: T, index: number) => index);
+
   if (data.length === 0) {
     return (
       <div className="rounded-lg border bg-white p-12 text-center text-gray-500">
@@ -48,9 +52,9 @@ export function DataTable<T extends { id: string | number }>({
             </tr>
           </thead>
           <tbody>
-            {data.map((item) => (
+            {data.map((item, index) => (
               <tr
-                key={item.id}
+                key={getKey(item, index)}
                 onClick={() => onRowClick?.(item)}
                 className={cn(
                   "border-b last:border-0",

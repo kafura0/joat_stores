@@ -53,7 +53,10 @@ export default function StaffPage() {
   });
 
   const onSubmit = async (data: FormData) => {
-    await createStaff.mutateAsync(data);
+    await createStaff.mutateAsync({
+      ...data,
+      role: data.role as UserRole,
+    });
     addToast({ type: "success", message: "Staff member added" });
     reset();
     setShowForm(false);
