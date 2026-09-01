@@ -47,11 +47,10 @@ def owner_client(owner, store):
 @pytest.mark.django_db
 class TestSecurityHeaders:
 
-    def test_csp_header_present(self, owner_client):
-        """Security headers added by SecurityHeadersMiddleware."""
+    def test_csp_header_not_set(self, owner_client):
+        """CSP is intentionally omitted — it blocks cross-origin API calls from Vercel frontends."""
         resp = owner_client.get("/api/v1/saas/plans/")
-        assert "Content-Security-Policy" in resp
-        assert "default-src 'self'" in resp["Content-Security-Policy"]
+        assert "Content-Security-Policy" not in resp
 
     def test_x_content_type_options_header(self, owner_client):
         resp = owner_client.get("/api/v1/saas/plans/")

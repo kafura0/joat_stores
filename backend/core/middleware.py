@@ -150,23 +150,11 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
     Note: HSTS is handled by production.py (SECURE_HSTS_SECONDS) and Nginx.
     """
 
-    _CSP = (
-        "default-src 'self'; "
-        "script-src 'self' https://js.stripe.com; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https:; "
-        "connect-src 'self'; "
-        "frame-ancestors 'none';"
-    )
-
     def process_response(self, request, response):
-        response.setdefault("Content-Security-Policy", self._CSP)
         response.setdefault("X-Content-Type-Options", "nosniff")
         response.setdefault("X-Frame-Options", "DENY")
         response.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-        response.setdefault("Cross-Origin-Resource-Policy", "same-site")
         return response
 
 
