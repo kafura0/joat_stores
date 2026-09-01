@@ -1,43 +1,74 @@
-/**
- * AdminSidebar — role-aware navigation sidebar.
- *
- * store_owner / store_manager: Dashboard, Orders, Products, Customers,
- *                               Analytics, Settings
- * platform_admin:              Stores, Analytics, Plans, System Health
- *
- * Mobile: hamburger toggle, collapses to off-canvas drawer at <768px.
- * All nav items: min 48×48px tap targets (AC8).
- *
- * Implementation: Story 1.8
- */
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Tags,
+  Box,
+  Receipt,
+  Users,
+  UserCog,
+  BarChart3,
+  Settings,
+  Store,
+} from "lucide-react";
 import type { UserRole } from "@/types/auth";
 
 interface NavItem {
   label: string;
   href: string;
+  icon: React.ComponentType<{ size?: number }>;
 }
 
-const STORE_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard/" },
-  { label: "Orders", href: "/orders/" },
-  { label: "Products", href: "/products/" },
-  { label: "Customers", href: "/customers/" },
-  { label: "Analytics", href: "/analytics/" },
-  { label: "Settings", href: "/settings/" },
+const STORE_OWNER_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard/", icon: LayoutDashboard },
+  { label: "POS Terminal", href: "/pos/", icon: ShoppingCart },
+  { label: "Products", href: "/products/", icon: Package },
+  { label: "Categories", href: "/categories/", icon: Tags },
+  { label: "Inventory", href: "/inventory/", icon: Box },
+  { label: "Orders", href: "/orders/", icon: Receipt },
+  { label: "Customers", href: "/customers/", icon: Users },
+  { label: "Staff", href: "/staff/", icon: UserCog },
+  { label: "Reports", href: "/reports/", icon: BarChart3 },
+  { label: "Settings", href: "/settings/", icon: Settings },
+];
+
+const CASHIER_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard/", icon: LayoutDashboard },
+  { label: "POS Terminal", href: "/pos/", icon: ShoppingCart },
+  { label: "Orders", href: "/orders/", icon: Receipt },
+];
+
+const WAITER_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/waiter/", icon: LayoutDashboard },
+  { label: "My Sales", href: "/waiter/my-sales/", icon: BarChart3 },
 ];
 
 const PLATFORM_NAV: NavItem[] = [
-  { label: "Stores", href: "/platform/" },
-  { label: "Analytics", href: "/platform/analytics/" },
-  { label: "Plans", href: "/platform/plans/" },
-  { label: "System Health", href: "/platform/health/" },
+  { label: "Overview", href: "/platform/", icon: LayoutDashboard },
+  { label: "Stores", href: "/platform/stores/", icon: Store },
+  { label: "Users", href: "/platform/users/", icon: Users },
+  { label: "Settings", href: "/platform/settings/", icon: Settings },
 ];
+
+function getNavForRole(role: UserRole): NavItem[] {
+  switch (role) {
+    case "platform_admin":
+      return PLATFORM_NAV;
+    case "store_owner":
+    case "store_manager":
+      return STORE_OWNER_NAV;
+    case "cashier":
+      return CASHIER_NAV;
+    case "waiter":
+      return WAITER_NAV;
+    default:
+      return STORE_OWNER_NAV;
+  }
+}
 
 interface AdminSidebarProps {
   role: UserRole;
@@ -51,11 +82,10 @@ export default function AdminSidebar({
   onClose,
 }: AdminSidebarProps) {
   const pathname = usePathname();
-  const navItems = role === "platform_admin" ? PLATFORM_NAV : STORE_NAV;
+  const navItems = getNavForRole(role);
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/40 md:hidden"
@@ -64,7 +94,6 @@ export default function AdminSidebar({
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={[
           "fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-gray-900 text-white transition-transform duration-200",
@@ -73,18 +102,13 @@ export default function AdminSidebar({
         ].join(" ")}
         aria-label="Sidebar navigation"
       >
-        {/* Brand */}
         <div className="flex h-16 items-center border-b border-gray-700 px-5">
           <span className="text-lg font-bold tracking-tight">joat stores</span>
         </div>
 
-        {/* Nav items */}
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             {navItems.map((item) => {
-              // Active if exact match OR a prefix match that isn't superseded by a
-              // more-specific nav item also matching the current path.
-              // Prevents "/platform/" from highlighting while on "/platform/analytics/".
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/" &&
@@ -101,13 +125,13 @@ export default function AdminSidebar({
                     href={item.href}
                     onClick={onClose}
                     className={[
-                      // AC8: min 48px tap target (py-3 = 12px × 2 + text ≈ 48px)
-                      "flex min-h-[48px] items-center rounded-lg px-3 py-3 text-sm font-medium transition-colors",
+                      "flex min-h-[48px] items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
                       isActive
                         ? "bg-gray-700 text-white"
                         : "text-gray-300 hover:bg-gray-800 hover:text-white",
                     ].join(" ")}
                   >
+                    <item.icon size={20} />
                     {item.label}
                   </Link>
                 </li>

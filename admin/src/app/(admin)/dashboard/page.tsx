@@ -1,19 +1,25 @@
-/**
- * Store owner / store manager dashboard shell.
- *
- * Fully implemented in Epic 4 (Retail) and Epic 8 (Analytics).
- * Story 1.8 provides the authenticated shell stub.
- *
- * Implementation: Story 1.8 (shell)
- */
+import { StatsGrid } from "@/components/dashboard/StatsGrid";
+import { RecentOrders } from "@/components/dashboard/RecentOrders";
+import { TopProducts } from "@/components/dashboard/TopProducts";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-900">Dashboard</h2>
-      <p className="text-sm text-gray-500">
-        Your store overview will appear here. Coming soon.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-500">Your store overview</p>
+      </div>
+
+      <StatsGrid />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RecentOrders />
+        </div>
+        <div>
+          <TopProducts />
+        </div>
+      </div>
     </div>
   );
 }
