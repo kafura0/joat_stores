@@ -1,23 +1,29 @@
-// lib/utils.ts
-// Shared formatting utilities.
-// RULE: Always use these — never format currency or dates inline in components.
+import { format, parseISO } from "date-fns";
 
-/**
- * Format a monetary amount in KES.
- * @param amount - string decimal e.g. "1500.00"
- * @returns formatted string e.g. "KES 1,500"
- */
-export function formatCurrency(amount: string): string {
-  return `KES ${parseFloat(amount).toLocaleString("en-KE")}`;
+const formatter = new Intl.NumberFormat("en-KE", {
+  style: "currency",
+  currency: "KES",
+  minimumFractionDigits: 2,
+});
+
+export function formatCurrency(amount: string | number): string {
+  return formatter.format(
+    typeof amount === "string" ? parseFloat(amount) : amount
+  );
 }
 
-/**
- * Format a UTC ISO datetime string in Africa/Nairobi timezone.
- * @param isoString - ISO 8601 UTC string e.g. "2026-02-24T12:00:00Z"
- * @returns formatted string in East Africa Time
- */
-export function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleString("en-KE", {
-    timeZone: "Africa/Nairobi",
-  });
+export function formatDate(dateString: string): string {
+  return format(parseISO(dateString), "MMM dd, yyyy");
+}
+
+export function formatDateTime(dateString: string): string {
+  return format(parseISO(dateString), "MMM dd, yyyy HH:mm");
+}
+
+export function formatTime(dateString: string): string {
+  return format(parseISO(dateString), "HH:mm");
+}
+
+export function cn(...classes: (string | undefined | false | null)[]): string {
+  return classes.filter(Boolean).join(" ");
 }

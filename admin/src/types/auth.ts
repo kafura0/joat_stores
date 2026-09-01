@@ -8,14 +8,14 @@ export type UserRole =
   | "platform_admin"
   | "store_owner"
   | "store_manager"
-  | "customer";
+  | "cashier"
+  | "waiter";
 
 export interface IUser {
   id: string;
   email: string;
   role: UserRole;
-  store_id: string | null; // null for platform_admin
-  /** Human-readable store name. Populated from store detail API (Epic 4). Null until then. */
+  store_id: string | null;
   store_name?: string | null;
 }
 
@@ -24,17 +24,15 @@ export interface ILoginCredentials {
   password: string;
 }
 
-/** Shape of POST /api/v1/auth/token/ 200 response body */
 export interface ITokenResponse {
   access: string;
   role: UserRole;
   store_id: string | null;
 }
 
-/** Decoded JWT access token payload */
 export interface IJWTPayload {
   user_id: string;
-  email?: string; // not guaranteed in all token versions — use login email as fallback
+  email?: string;
   role: UserRole;
   store_id: string | null;
   exp: number;
