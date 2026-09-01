@@ -98,6 +98,7 @@ END $$;
 INSERT INTO django_migrations (app, name, applied) VALUES
 -- Django core
 ('contenttypes', '0001_initial', NOW()),
+('contenttypes', '0002_remove_content_type_name', NOW()),
 ('auth', '0001_initial', NOW()),
 ('auth', '0002_alter_permission_name_max_length', NOW()),
 ('auth', '0003_alter_user_email_max_length', NOW()),
