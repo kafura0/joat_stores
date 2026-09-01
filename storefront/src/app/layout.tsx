@@ -29,6 +29,17 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: branding.store_name,
     description: branding.tagline || `${branding.store_name} — powered by joat stores`,
+    manifest: "/api/manifest",
+    icons: {
+      icon: "/api/icon",
+      apple: "/api/icon",
+    },
+    themeColor: branding.theme?.primary_color || "#1a1a1a",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: branding.store_name,
+    },
   };
 }
 
