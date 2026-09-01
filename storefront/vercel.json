@@ -4,7 +4,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://joat-stores-api-qtde.onrender.com"
+    "NEXT_PUBLIC_API_URL": "https://joat-stores-api-qtde.onrender.com/api/v1"
   },
   "headers": [
     {
