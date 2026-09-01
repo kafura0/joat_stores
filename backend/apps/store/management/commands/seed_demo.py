@@ -48,6 +48,8 @@ class Command(BaseCommand):
         self._seed_restaurant_menu(restaurant_store)
         self._seed_bar_products(bar_store)
         self._seed_orders(retail_store)
+        self._seed_orders(restaurant_store)
+        self._seed_orders(bar_store)
 
         self.stdout.write(self.style.SUCCESS("\nDemo data seeded successfully!"))
         self.stdout.write("")
