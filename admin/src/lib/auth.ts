@@ -73,12 +73,13 @@ export async function performLogin(
   email: string,
   password: string
 ): Promise<UserRole> {
-  const res = await api.post<{ data: { access: string; role: UserRole; store_id: string | null } }>(
+  const res = await api.post<{ data: { access: string; user: { id: string; email: string; role: UserRole; store_id: string | null } } }>(
     "/auth/token/",
     { email, password }
   );
 
-  const { access, role, store_id } = res.data.data;
+  const { access, user: apiUser } = res.data.data;
+  const { role, store_id } = apiUser;
   const payload = decodeToken(access);
 
   if (!payload) {
