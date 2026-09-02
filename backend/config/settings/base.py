@@ -345,7 +345,7 @@ PLATFORM_SUBDOMAINS = env.list(
 # Request paths that bypass store resolution (health check, Django admin, schema)
 MIDDLEWARE_BYPASS_PATHS = env.list(
     "MIDDLEWARE_BYPASS_PATHS",
-    default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/api/v1/platform/", "/api/v1/auth/token/", "/api/v1/auth/logout-all/", "/accounts/"],
+    default=["/health/", "/admin/", "/api/v1/schema/", "/api/v1/docs/", "/api/v1/platform/", "/api/v1/auth/token/", "/api/v1/auth/logout-all/", "/api/v1/hub/", "/accounts/"],
 )
 # Paths where suspended stores are allowed to pass through TenantMiddleware
 # (so the view can return a branded error response rather than a generic 503).

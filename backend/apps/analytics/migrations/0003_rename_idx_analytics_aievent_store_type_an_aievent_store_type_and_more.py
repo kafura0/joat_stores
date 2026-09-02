@@ -4,6 +4,38 @@ from decimal import Decimal
 from django.db import migrations, models
 
 
+def safe_rename_aievent_index(apps, schema_editor):
+    """Rename the index only if the old name exists and the new name doesn't."""
+    table_name = "analytics_aievent"
+    old_name = "idx_analytics_aievent_store_type"
+    new_name = "an_aievent_store_type"
+
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM pg_indexes WHERE indexname = %s",
+            [old_name],
+        )
+        old_exists = cursor.fetchone() is not None
+
+        cursor.execute(
+            "SELECT 1 FROM pg_indexes WHERE indexname = %s",
+            [new_name],
+        )
+        new_exists = cursor.fetchone() is not None
+
+    if old_exists and not new_exists:
+        schema_editor.execute(
+            f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"'
+        )
+    elif not old_exists and not new_exists:
+        # Neither exists — create the index fresh
+        schema_editor.execute(
+            f'CREATE INDEX "{new_name}" ON "{table_name}" '
+            f'("store_id", "event_type", "occurred_at")'
+        )
+    # If new_exists, nothing to do — already correct
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,11 +43,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name="aievent",
-            new_name="an_aievent_store_type",
-            old_name="idx_analytics_aievent_store_type",
-        ),
+        migrations.RunPython(safe_rename_aievent_index, migrations.RunPython.noop),
         migrations.AlterField(
             model_name="adminpiiaccesslog",
             name="path",

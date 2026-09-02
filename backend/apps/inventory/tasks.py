@@ -23,7 +23,7 @@ def check_low_stock(self, store_id: str) -> None:
         low_stock_variants = Variant.objects.filter(
             store=store,
             inventory_count__lte=threshold,
-            is_active=True,
+            is_available=True,
         ).select_related("product")[:50]
 
         for variant in low_stock_variants:

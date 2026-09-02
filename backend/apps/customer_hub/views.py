@@ -160,7 +160,7 @@ class HubStoresView(APIView):
             platform_user=platform_user,
             store__isnull=False,
             role="customer",
-        ).select_related("store__settings").order_by("store__name")
+        ).select_related("store").order_by("store__name")
 
         stores = [su.store for su in store_users if su.store is not None]
 
