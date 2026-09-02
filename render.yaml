@@ -20,7 +20,7 @@ services:
       - key: PLATFORM_SUBDOMAINS
         value: admin.joat.com,api.joat.com,localhost,127.0.0.1,joat-stores-api-qtde.onrender.com
       - key: CORS_ALLOWED_ORIGINS
-        value: https://joat-storefront.vercel.app,https://joat-stores-admin.vercel.app
+        value: https://joat-stores-storefront.vercel.app,https://joat-stores-admin.vercel.app
       # Set these manually in Render dashboard after creating Supabase + Upstash:
       - key: DATABASE_URL
         sync: false
