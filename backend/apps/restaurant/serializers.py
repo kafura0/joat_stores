@@ -176,6 +176,7 @@ class DineInOrderSerializer(serializers.ModelSerializer):
             "id",
             "session",
             "status",
+            "order_type",
             "items_snapshot",
             "total_amount",
             "placed_at",

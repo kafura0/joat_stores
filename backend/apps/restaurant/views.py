@@ -930,7 +930,7 @@ class OrderStatusView(APIView):
             "order_id": str(order.id),
             "order_status": order.status,
             "ticket_status": ticket_status,
-            "table_number": order.session.table.number,
+            "table_number": order.ticket.table_number if hasattr(order, 'ticket') else 0,
             "total_amount": str(order.total_amount),
             "items_snapshot": order.items_snapshot,
             "placed_at": order.placed_at.isoformat(),

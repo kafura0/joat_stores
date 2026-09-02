@@ -267,22 +267,28 @@ class TestSubscriptionRenewal:
 
     def test_payment_signal_activates_subscription(self, subscription, growth_plan):
         """payment_confirmed with ref 'subscription-{store_id}' → activates subscription."""
+        from apps.payment.tests.factories import MpesaTransactionFactory
+
         subscription.plan = growth_plan
         subscription.status = SubscriptionStatus.PAST_DUE
         subscription.save(update_fields=["plan", "status"])
 
         from apps.saas.apps import _handle_subscription_payment_confirmed
 
-        mock_tx = MagicMock()
-        mock_tx.reference = f"subscription-{subscription.store_id}"
+        txn = MpesaTransactionFactory(
+            store=subscription.store,
+            reference=f"subscription-{subscription.store_id}",
+        )
 
-        _handle_subscription_payment_confirmed(sender=None, transaction=mock_tx)
+        _handle_subscription_payment_confirmed(sender=None, transaction=txn)
 
         subscription.refresh_from_db()
         assert subscription.status == SubscriptionStatus.ACTIVE
         assert subscription.period_end is not None
 
     def test_payment_signal_extends_active_period(self, subscription, growth_plan):
+        from apps.payment.tests.factories import MpesaTransactionFactory
+
         today = timezone.localdate()
         subscription.plan = growth_plan
         subscription.status = SubscriptionStatus.ACTIVE
@@ -292,10 +298,12 @@ class TestSubscriptionRenewal:
 
         from apps.saas.apps import _handle_subscription_payment_confirmed
 
-        mock_tx = MagicMock()
-        mock_tx.reference = f"subscription-{subscription.store_id}"
+        txn = MpesaTransactionFactory(
+            store=subscription.store,
+            reference=f"subscription-{subscription.store_id}",
+        )
 
-        _handle_subscription_payment_confirmed(sender=None, transaction=mock_tx)
+        _handle_subscription_payment_confirmed(sender=None, transaction=txn)
 
         subscription.refresh_from_db()
         # New period starts day after current period_end
@@ -349,22 +357,26 @@ class TestPlanLimits:
 class TestAIScaffold:
 
     def test_recommendations_returns_501(self, owner_client):
+        """Without AI plan, returns 402 (AI_PLAN_REQUIRED)."""
         resp = owner_client.get("/api/v1/ai/recommendations/")
-        assert resp.status_code == 501
-        assert resp.data["errors"][0]["code"] == "AI_NOT_LIVE"
+        assert resp.status_code == 402
+        assert resp.data["errors"][0]["code"] == "AI_PLAN_REQUIRED"
 
     def test_peak_hour_predictions_returns_501(self, owner_client):
+        """Without AI plan, returns 402 (AI_PLAN_REQUIRED)."""
         resp = owner_client.get("/api/v1/ai/predictions/peak-hours/")
-        assert resp.status_code == 501
-        assert resp.data["errors"][0]["code"] == "AI_NOT_LIVE"
+        assert resp.status_code == 402
+        assert resp.data["errors"][0]["code"] == "AI_PLAN_REQUIRED"
 
     def test_nlp_search_returns_501(self, owner_client):
+        """NLP search is available on all plans (no AI plan required)."""
         resp = owner_client.post("/api/v1/ai/search/", {"q": "burgers"}, format="json")
-        assert resp.status_code == 501
-        assert resp.data["errors"][0]["code"] == "AI_NOT_LIVE"
+        assert resp.status_code == 200
+        assert "results" in resp.data
 
-    def test_ai_endpoints_require_auth(self, db):
+    def test_ai_endpoints_require_auth(self, store):
         c = APIClient()
+        c.credentials(HTTP_X_STORE_ID=str(store.id))
         resp = c.get("/api/v1/ai/recommendations/")
         assert resp.status_code == 401
 

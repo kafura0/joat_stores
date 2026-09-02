@@ -110,7 +110,7 @@ class PointsTransaction(TenantModel):
         ordering = ["-occurred_at"]
 
     def save(self, *args, **kwargs):
-        if self.pk:
+        if self.pk and self.__class__.objects.filter(pk=self.pk).exists():
             raise ValueError("PointsTransaction is append-only.")
         super().save(*args, **kwargs)
 

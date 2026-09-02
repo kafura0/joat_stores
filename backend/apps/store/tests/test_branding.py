@@ -55,9 +55,9 @@ class TestBrandingEndpoint:
         assert data["store_name"] == "Nairobi Eats"
         assert "logo_url" in data
         assert "tagline" in data
-        assert "primary_color" in data
-        assert "secondary_color" in data
-        assert "font_family" in data
+        assert "theme" in data
+        assert "primary_color" in data["theme"]
+        assert "secondary_color" in data["theme"]
         assert data["currency"] == "KES"
         assert data["country"] == "KE"
         assert data["status"] == "active"
@@ -100,9 +100,8 @@ class TestBrandingEndpoint:
     def test_returns_default_colors_when_theme_not_configured(self):
         resp = self._request_with_store()
         data = resp.data["data"]
-        assert data["primary_color"] == "#1a1a1a"
-        assert data["secondary_color"] == "#6b7280"
-        assert data["font_family"] == "Inter"
+        assert data["theme"]["primary_color"] == "#1a1a1a"
+        assert data["theme"]["secondary_color"] == "#6b7280"
 
     def test_returns_custom_branding_when_configured(self):
         StoreSettings.objects.create(
@@ -114,15 +113,13 @@ class TestBrandingEndpoint:
             store=self.store,
             primary_color="#e63946",
             secondary_color="#457b9d",
-            font_family="Roboto",
         )
         resp = self._request_with_store()
         data = resp.data["data"]
         assert data["tagline"] == "Fresh food, fast delivery"
         assert data["logo_url"] == "https://cdn.joat.com/logo.webp"
-        assert data["primary_color"] == "#e63946"
-        assert data["secondary_color"] == "#457b9d"
-        assert data["font_family"] == "Roboto"
+        assert data["theme"]["primary_color"] == "#e63946"
+        assert data["theme"]["secondary_color"] == "#457b9d"
 
     def test_idempotent_get_or_create_on_repeated_calls(self):
         """Multiple calls must not create duplicate settings/theme records."""

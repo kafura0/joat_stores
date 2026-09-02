@@ -148,14 +148,25 @@ def test_direct_status_patch_returns_422(store, user, order):
 
 @pytest.mark.django_db
 def test_order_confirm_dispatches_email_task(store, user, order):
-    with patch("apps.order.tasks.send_order_confirmation") as mock_task:
+    from django.db import transaction as db_tx
+
+    original_on_commit = db_tx.on_commit
+    committed_callbacks = []
+
+    def capture_on_commit(func, using=None):
+        committed_callbacks.append(func)
+
+    with patch("apps.order.tasks.send_order_confirmation") as mock_task, \
+         patch("django.db.transaction.on_commit", side_effect=capture_on_commit):
         req = _view_request("post", f"/api/v1/store/orders/{order.id}/confirm/",
                             user=user, store=store)
         view = OrderConfirmView.as_view()
         resp = view(req, order_id=str(order.id))
 
     assert resp.status_code == 200
-    # task is dispatched via on_commit — in tests transactions commit immediately
+    # Execute captured on_commit callbacks manually
+    for cb in committed_callbacks:
+        cb()
     mock_task.apply_async.assert_called_once_with(args=[str(order.id)])
 
 

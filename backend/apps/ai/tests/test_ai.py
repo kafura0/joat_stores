@@ -252,8 +252,9 @@ class TestNLPMenuSearch:
         assert resp.status_code == 200
         assert resp.data["count"] == 0
 
-    def test_search_requires_auth(self, db):
+    def test_search_requires_auth(self, store):
         c = APIClient()
+        c.credentials(HTTP_X_STORE_ID=str(store.id))
         resp = c.post("/api/v1/ai/search/", {"q": "pizza"}, format="json")
         assert resp.status_code == 401
 

@@ -109,11 +109,11 @@ def test_bill_includes_existing_shares(store, waiter, session, orders):
 
 @pytest.mark.django_db
 def test_pay_bill_creates_share_and_initiates_stk(store, waiter, session, orders):
-    mock_txn = MagicMock()
-    mock_txn.id = "txn-uuid-001"
-    mock_txn.checkout_request_id = "ws_CO_001"
+    from apps.payment.tests.factories import MpesaTransactionFactory
 
-    with patch("apps.payment.services.initiate_payment", return_value=mock_txn) as mock_pay:
+    real_txn = MpesaTransactionFactory(store=store, reference="bill-share-init")
+
+    with patch("apps.payment.services.initiate_payment", return_value=real_txn) as mock_pay:
         resp = _session_action(
             "pay_bill", session.id, method="post",
             data={"phone": "+254712345678"},
@@ -159,9 +159,9 @@ def test_pay_bill_closed_session_returns_400(store, waiter):
 
 @pytest.mark.django_db
 def test_split_bill_creates_one_share_per_payer(store, waiter, session, orders):
-    mock_txn = MagicMock()
-    mock_txn.id = "txn-uuid-002"
-    mock_txn.checkout_request_id = "ws_CO_002"
+    from apps.payment.tests.factories import MpesaTransactionFactory
+
+    real_txn = MpesaTransactionFactory(store=store, reference="bill-share-split")
 
     payload = {
         "shares": [
@@ -170,7 +170,7 @@ def test_split_bill_creates_one_share_per_payer(store, waiter, session, orders):
         ]
     }
 
-    with patch("apps.payment.services.initiate_payment", return_value=mock_txn):
+    with patch("apps.payment.services.initiate_payment", return_value=real_txn):
         resp = _session_action(
             "split_bill", session.id, method="post",
             data=payload,
@@ -199,13 +199,13 @@ def test_split_bill_invalid_payload_returns_400(store, waiter, session):
 
 @pytest.mark.django_db
 def test_signal_marks_share_paid(store, session):
+    from apps.payment.tests.factories import MpesaTransactionFactory
+
     share = BillShareFactory(session=session, store=store)
-    mock_txn = MagicMock()
-    mock_txn.id = share.id  # not used, just placeholder
-    mock_txn.reference = f"bill-share-{share.id}"
+    txn = MpesaTransactionFactory(store=store, reference=f"bill-share-{share.id}")
 
     from apps.restaurant.apps import _handle_payment_confirmed
-    _handle_payment_confirmed(sender=None, transaction=mock_txn)
+    _handle_payment_confirmed(sender=None, transaction=txn)
 
     share.refresh_from_db()
     assert share.status == BillShare.STATUS_PAID
@@ -213,24 +213,24 @@ def test_signal_marks_share_paid(store, session):
 
 @pytest.mark.django_db
 def test_signal_auto_closes_session_when_all_shares_paid(store):
+    from apps.payment.tests.factories import MpesaTransactionFactory
+
     table = TableFactory(store=store)
     session = TableSessionFactory(table=table, status=TableSession.STATUS_BILL_REQUESTED)
     share1 = BillShareFactory(session=session, store=store, amount=Decimal("500.00"))
     share2 = BillShareFactory(session=session, store=store, amount=Decimal("350.00"))
 
-    mock_txn1 = MagicMock()
-    mock_txn1.reference = f"bill-share-{share1.id}"
+    txn1 = MpesaTransactionFactory(store=store, reference=f"bill-share-{share1.id}")
 
     from apps.restaurant.apps import _handle_payment_confirmed
-    _handle_payment_confirmed(sender=None, transaction=mock_txn1)
+    _handle_payment_confirmed(sender=None, transaction=txn1)
 
     # First share paid — session still open (share2 still PENDING)
     session.refresh_from_db()
     assert session.status == TableSession.STATUS_BILL_REQUESTED
 
-    mock_txn2 = MagicMock()
-    mock_txn2.reference = f"bill-share-{share2.id}"
-    _handle_payment_confirmed(sender=None, transaction=mock_txn2)
+    txn2 = MpesaTransactionFactory(store=store, reference=f"bill-share-{share2.id}")
+    _handle_payment_confirmed(sender=None, transaction=txn2)
 
     # Both paid — session auto-closes
     session.refresh_from_db()
@@ -240,9 +240,10 @@ def test_signal_auto_closes_session_when_all_shares_paid(store):
 @pytest.mark.django_db
 def test_signal_handles_unknown_share_id_gracefully():
     """Signal handler must not raise — logs a warning only."""
-    mock_txn = MagicMock()
-    mock_txn.reference = "bill-share-00000000-0000-0000-0000-000000000099"
+    from apps.payment.tests.factories import MpesaTransactionFactory
+
+    txn = MpesaTransactionFactory(reference="bill-share-00000000-0000-0000-0000-000000000099")
 
     from apps.restaurant.apps import _handle_payment_confirmed
     # Should not raise
-    _handle_payment_confirmed(sender=None, transaction=mock_txn)
+    _handle_payment_confirmed(sender=None, transaction=txn)

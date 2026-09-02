@@ -8,6 +8,7 @@ import pytest
 
 from apps.analytics.models import AdminPIIAccessLog
 from apps.store.models import Store
+from apps.users.tests.factories import UserFactory
 from apps.users.models import User
 from core.audit import _mask_email, _mask_phone, log_pii_access, pii_access_logged, scrub_pii
 
@@ -79,11 +80,7 @@ class TestAdminPIIAccessLog(TestCase):
             slug="audit-store",
             domain="audit.joat.com",
         )
-        admin = User.objects.create_user(
-            email="admin@joat.com",
-            password="pass",
-            role="platform_admin",
-        )
+        admin = UserFactory(role="platform_admin")
         log_pii_access(
             user=admin,
             store=store,
@@ -136,7 +133,6 @@ class TestAdminPIIAccessLog(TestCase):
         fake_view_instance = FakeView()
         fake_view_instance.request = MagicMock()
         fake_view_instance.request.user = admin
-        fake_view_instance.request.user.is_authenticated = True
         fake_view_instance.request.store = store
         fake_view_instance.request.path = "/api/v1/customers/abc/"
         fake_view_instance.request.method = "GET"
@@ -156,11 +152,7 @@ class TestAdminPIIAccessLog(TestCase):
         """H1 AC: log created even if the view raises."""
         from unittest.mock import MagicMock
 
-        admin = User.objects.create_user(
-            email="exc-admin@joat.com",
-            password="pass",
-            role="platform_admin",
-        )
+        admin = UserFactory(role="platform_admin")
 
         class FakeView:
             pass
@@ -168,7 +160,6 @@ class TestAdminPIIAccessLog(TestCase):
         fake_view_instance = FakeView()
         fake_view_instance.request = MagicMock()
         fake_view_instance.request.user = admin
-        fake_view_instance.request.user.is_authenticated = True
         fake_view_instance.request.store = None
         fake_view_instance.request.path = "/api/v1/customers/xyz/"
         fake_view_instance.request.method = "GET"

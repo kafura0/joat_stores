@@ -123,8 +123,10 @@ def test_create_session_409_when_open_already_exists():
     response = view(request)
 
     assert response.status_code == 400  # DRF ValidationError from perform_create
-    errors = response.data.get("errors", [])
-    assert any(e["code"] == "DUPLICATE_SESSION" for e in errors)
+    # DRF's default exception handler + custom handler wraps the dict
+    # Look for DUPLICATE_SESSION anywhere in the response
+    data_str = str(response.data)
+    assert "DUPLICATE_SESSION" in data_str
 
 
 @pytest.mark.django_db

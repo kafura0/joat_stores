@@ -34,7 +34,8 @@ URL = "/api/v1/payments/card/initiate/"
 class TestCardPaymentInitiate:
 
     def test_stripe_success(self, auth_client):
-        with patch("apps.payment.services.stripe.PaymentIntent.create") as mock:
+        with patch("stripe.PaymentIntent.create") as mock, \
+             patch("django.conf.settings.STRIPE_SECRET_KEY", "sk_test_fake"):
             mock.return_value.id = "pi_123"
             mock.return_value.client_secret = "pi_123_secret_abc"
             resp = auth_client.post(
@@ -73,8 +74,9 @@ class TestCardPaymentInitiate:
 @pytest.mark.django_db
 class TestCardPaymentWebhook:
 
-    def test_stripe_webhook_invalid_signature(self, auth_client):
+    def test_stripe_webhook_invalid_signature(self, auth_client, store):
         client = APIClient()
+        client.credentials(HTTP_X_STORE_ID=str(store.id))
         resp = client.post(
             "/api/v1/payments/stripe-webhook/",
             {"type": "payment_intent.succeeded", "data": {"object": {"id": "pi_123"}}},

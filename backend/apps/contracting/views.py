@@ -16,7 +16,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.pagination import StoreCursorPagination
 from core.permissions import HasStore, IsStoreManager
+
+
+class _ServicePagination(StoreCursorPagination):
+    ordering = "name"
 
 from apps.contracting.models import (
     AvailabilitySlot,
@@ -80,7 +85,7 @@ class ServiceListView(APIView):
 
     def get(self, request):
         services = Service.objects.filter(store=request.store, is_active=True)
-        paginator = StoreCursorPagination()
+        paginator = _ServicePagination()
         page = paginator.paginate_queryset(services, request)
         return paginator.get_paginated_response(ServiceSerializer(page, many=True).data)
 

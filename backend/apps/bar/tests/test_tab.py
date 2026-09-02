@@ -174,8 +174,9 @@ class TestRoundOrdering:
 
     def test_removed_items_excluded_from_total(self, store):
         tab = TabFactory(store=store)
-        active = TabItemFactory(store=store, tab=tab, unit_price=Decimal("200.00"), quantity=2)
-        removed = TabItemFactory(store=store, tab=tab, unit_price=Decimal("300.00"), quantity=1, removed_at=timezone.now())
+        round1 = TabRoundFactory(store=store, tab=tab, round_number=1)
+        active = TabItemFactory(store=store, tab=tab, round=round1, unit_price=Decimal("200.00"), quantity=2)
+        removed = TabItemFactory(store=store, tab=tab, round=round1, unit_price=Decimal("300.00"), quantity=1, removed_at=timezone.now())
         assert tab.total_amount == Decimal("400.00")
 
 

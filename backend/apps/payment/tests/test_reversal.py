@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.utils import timezone
 
-from rest_framework.test import APIRequestFactory
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 from apps.payment.exceptions import PaymentReversalError, ReversalError
 from apps.payment.models import MpesaTransaction, MpesaTransactionStatus
@@ -46,13 +46,8 @@ def _make_store():
 
 
 def _make_user():
-    from django.contrib.auth import get_user_model
-
-    User = get_user_model()
-    return User.objects.create_user(
-        email=f"user-{uuid.uuid4().hex[:8]}@test.com",
-        password="testpass",
-    )
+    from apps.users.tests.factories import UserFactory
+    return UserFactory()
 
 
 def _make_txn(store, status=MpesaTransactionStatus.CONFIRMED, receipt=None):
@@ -89,7 +84,7 @@ def _call_reverse_view(store, user, txn_id, payload=None):
         data=payload,
         format="json",
     )
-    factory.force_authenticate(request, user=user)
+    force_authenticate(request, user=user)
     request.store = store
     view = ReversePaymentView.as_view()
     return view(request, transaction_id=txn_id)

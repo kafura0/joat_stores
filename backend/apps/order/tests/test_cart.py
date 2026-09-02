@@ -19,7 +19,10 @@ from apps.store.tests.factories import StoreFactory
 
 @pytest.fixture
 def store():
-    return StoreFactory()
+    import uuid
+    mock = MagicMock()
+    mock.id = uuid.uuid4()
+    return mock
 
 
 # ---------------------------------------------------------------------------
@@ -140,9 +143,11 @@ def test_merge_carts_combines_items(store):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_write_cart_snapshot(store):
+def test_write_cart_snapshot():
     from apps.order.models import CartSnapshot
+    from apps.store.tests.factories import StoreFactory
 
+    store = StoreFactory()
     items = [{"product_id": "p1", "variant_id": "v1", "quantity": 1}]
     snapshot = cart_service.write_cart_snapshot(store, "cart-ref-001", items)
 
@@ -152,10 +157,12 @@ def test_write_cart_snapshot(store):
 
 
 @pytest.mark.django_db
-def test_write_cart_snapshot_is_idempotent(store):
+def test_write_cart_snapshot_is_idempotent():
     """Calling twice for same cart_ref updates rather than duplicates."""
     from apps.order.models import CartSnapshot
+    from apps.store.tests.factories import StoreFactory
 
+    store = StoreFactory()
     items1 = [{"product_id": "p1", "variant_id": "v1", "quantity": 1}]
     items2 = [{"product_id": "p1", "variant_id": "v1", "quantity": 3}]
 

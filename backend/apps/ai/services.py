@@ -90,7 +90,7 @@ class RecommendationService:
             # Pure popularity fallback: return best-sellers
             products = (
                 Product.objects.filter(store=store, is_available=True)
-                .order_by("-created_at")[:limit]
+                .order_by("-id")[:limit]
             )
         else:
             # Try UUIDs; ignore non-UUID entity_ids gracefully

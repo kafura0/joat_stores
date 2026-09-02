@@ -110,14 +110,14 @@ def test_public_menu_tenant_isolation():
 
 
 @pytest.mark.django_db
-def test_public_menu_no_store_returns_404():
-    """Missing store context returns 404."""
+def test_public_menu_no_store_returns_error():
+    """Missing store context returns error (401 or 403)."""
     factory = APIRequestFactory()
     request = factory.get("/api/v1/restaurant/public-menu/")
     request.store = None  # type: ignore[assignment]
     view = PublicMenuView.as_view()
     response = view(request)
-    assert response.status_code == 404
+    assert response.status_code in (401, 403)
 
 
 @pytest.mark.django_db

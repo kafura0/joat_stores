@@ -109,8 +109,8 @@ def test_product_list_is_paginated(store, user):
     view = ProductViewSet.as_view({"get": "list"})
     resp = view(req)
     assert resp.status_code == 200
-    # Paginated response has 'results' key
-    assert "results" in resp.data or isinstance(resp.data, list)
+    # Paginated response has 'data' key
+    assert "data" in resp.data or isinstance(resp.data, list)
 
 
 @pytest.mark.django_db
@@ -123,7 +123,7 @@ def test_product_list_excludes_unavailable(store, user):
     resp = view(req)
     assert resp.status_code == 200
     # Only 1 available product shown
-    results = resp.data.get("results", resp.data)
+    results = resp.data.get("data", [])
     assert len(results) == 1
 
 
@@ -133,7 +133,13 @@ def test_product_list_excludes_unavailable(store, user):
 
 @pytest.mark.django_db
 def test_low_stock_alert_dispatched_on_save(store, product):
-    with patch("apps.product.models._dispatch_low_stock_alert") as mock_dispatch:
+    from django.db import transaction as db_tx
+
+    def _run_immediately(func, using=None):
+        func()
+
+    with patch("apps.product.models._dispatch_low_stock_alert") as mock_dispatch, \
+         patch("django.db.transaction.on_commit", side_effect=_run_immediately):
         VariantFactory(product=product, store=store, inventory_count=3)
     # inventory_count=3 ≤ default threshold=5 → dispatch called
     mock_dispatch.assert_called_once()

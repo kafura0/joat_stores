@@ -142,7 +142,7 @@ class TestServiceCatalog:
         c.credentials(HTTP_X_STORE_ID=str(store.id))
         resp = c.get("/api/v1/contracting/services/")
         assert resp.status_code == 200
-        assert len(resp.data["results"]) == 1
+        assert len(resp.data["data"]) == 1
 
     def test_inactive_services_excluded(self, client, store):
         Service.objects.create(
@@ -151,7 +151,7 @@ class TestServiceCatalog:
         )
         resp = client.get("/api/v1/contracting/services/")
         # Only active services returned
-        for svc in resp.data["results"]:
+        for svc in resp.data["data"]:
             assert svc["is_active"] is True
 
 

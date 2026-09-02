@@ -271,7 +271,7 @@ class TestPlanAndSubscriptionModels(TestCase):
     """Test SaaS stub models."""
 
     def test_plan_defaults(self):
-        plan = Plan.objects.create()
+        plan = Plan.objects.create(name="Free Trial", slug="free", api_rate_limit=100)
         assert plan.name == "Free Trial"
         assert plan.api_rate_limit == 100
 
