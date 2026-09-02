@@ -6,6 +6,59 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def _index_exists(cursor, name):
+    cursor.execute("SELECT 1 FROM pg_indexes WHERE indexname = %s", [name])
+    return cursor.fetchone() is not None
+
+
+def _constraint_exists(cursor, table, name):
+    cursor.execute(
+        "SELECT 1 FROM information_schema.table_constraints "
+        "WHERE table_name = %s AND constraint_name = %s",
+        [table, name],
+    )
+    return cursor.fetchone() is not None
+
+
+INDEX_RENAMES = [
+    ("billshare", "idx_rst_billshare_session_status", "rst_blshr_session_status"),
+    ("dineinorder", "idx_rst_dineinorder_store_status", "rst_dinord_store_status"),
+    ("kitchenticket", "idx_rst_kitchenticket_store_status", "rst_kittkt_store_status"),
+    ("pendingorder", "idx_rst_pendingorder_store_status", "rst_porder_store_status"),
+    ("pendingorder", "idx_rst_pendingorder_store_pin_status", "rst_porder_store_pin_status"),
+    ("pendingorder", "idx_rst_pendingorder_store_phone_status", "rst_porder_store_phone_status"),
+    ("reservation", "idx_rst_reservation_store_status", "rst_reserv_store_status"),
+    ("reservation", "idx_rst_reservation_store_time", "rst_reserv_store_time"),
+    ("tablesession", "idx_rst_tablesession_store_status", "rst_tsess_store_status"),
+    ("tablesession", "idx_rst_tablesession_table_status", "rst_tsess_table_status"),
+]
+
+CONSTRAINT_REMOVES = [
+    ("menusection", "uq_restaurant_menusection_store_name"),
+    ("table", "uq_restaurant_table_store_number"),
+    ("tablesession", "uq_restaurant_tablesession_one_open_per_table"),
+]
+
+
+def safe_restaurant_forward(apps, schema_editor):
+    with schema_editor.connection.cursor() as cursor:
+        for table, old_name, new_name in INDEX_RENAMES:
+            if _index_exists(cursor, old_name) and not _index_exists(cursor, new_name):
+                schema_editor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
+            elif not _index_exists(cursor, old_name) and not _index_exists(cursor, new_name):
+                pass  # missing under both names — skip silently
+
+        for table, name in CONSTRAINT_REMOVES:
+            if _constraint_exists(cursor, f"restaurant_{table}", name):
+                schema_editor.execute(
+                    f'ALTER TABLE "restaurant_{table}" DROP CONSTRAINT "{name}"'
+                )
+
+
+def safe_restaurant_backward(apps, schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -15,68 +68,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveConstraint(
-            model_name="menusection",
-            name="uq_restaurant_menusection_store_name",
-        ),
-        migrations.RemoveConstraint(
-            model_name="table",
-            name="uq_restaurant_table_store_number",
-        ),
-        migrations.RemoveConstraint(
-            model_name="tablesession",
-            name="uq_restaurant_tablesession_one_open_per_table",
-        ),
-        migrations.RenameIndex(
-            model_name="billshare",
-            new_name="rst_blshr_session_status",
-            old_name="idx_rst_billshare_session_status",
-        ),
-        migrations.RenameIndex(
-            model_name="dineinorder",
-            new_name="rst_dinord_store_status",
-            old_name="idx_rst_dineinorder_store_status",
-        ),
-        migrations.RenameIndex(
-            model_name="kitchenticket",
-            new_name="rst_kittkt_store_status",
-            old_name="idx_rst_kitchenticket_store_status",
-        ),
-        migrations.RenameIndex(
-            model_name="pendingorder",
-            new_name="rst_porder_store_status",
-            old_name="idx_rst_pendingorder_store_status",
-        ),
-        migrations.RenameIndex(
-            model_name="pendingorder",
-            new_name="rst_porder_store_pin_status",
-            old_name="idx_rst_pendingorder_store_pin_status",
-        ),
-        migrations.RenameIndex(
-            model_name="pendingorder",
-            new_name="rst_porder_store_phone_status",
-            old_name="idx_rst_pendingorder_store_phone_status",
-        ),
-        migrations.RenameIndex(
-            model_name="reservation",
-            new_name="rst_reserv_store_status",
-            old_name="idx_rst_reservation_store_status",
-        ),
-        migrations.RenameIndex(
-            model_name="reservation",
-            new_name="rst_reserv_store_time",
-            old_name="idx_rst_reservation_store_time",
-        ),
-        migrations.RenameIndex(
-            model_name="tablesession",
-            new_name="rst_tsess_store_status",
-            old_name="idx_rst_tablesession_store_status",
-        ),
-        migrations.RenameIndex(
-            model_name="tablesession",
-            new_name="rst_tsess_table_status",
-            old_name="idx_rst_tablesession_table_status",
-        ),
+        migrations.RunPython(safe_restaurant_forward, safe_restaurant_backward),
         migrations.AlterField(
             model_name="billshare",
             name="items_snapshot",

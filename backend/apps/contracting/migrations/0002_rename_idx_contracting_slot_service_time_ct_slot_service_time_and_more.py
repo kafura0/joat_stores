@@ -4,6 +4,33 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def _index_exists(cursor, name):
+    cursor.execute("SELECT 1 FROM pg_indexes WHERE indexname = %s", [name])
+    return cursor.fetchone() is not None
+
+
+INDEX_RENAMES = [
+    ("availabilityslot", "idx_contracting_slot_service_time", "ct_slot_service_time"),
+    ("invoice", "idx_contracting_invoice_payment", "ct_invoice_payment"),
+    ("quoterequest", "idx_contracting_quotereq_status", "ct_quotereq_status"),
+    ("servicebooking", "idx_contracting_booking_status", "ct_booking_status"),
+]
+
+
+def safe_contracting_forward(apps, schema_editor):
+    with schema_editor.connection.cursor() as cursor:
+        for table, old_name, new_name in INDEX_RENAMES:
+            if _index_exists(cursor, old_name) and not _index_exists(cursor, new_name):
+                schema_editor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
+            elif not _index_exists(cursor, old_name) and not _index_exists(cursor, new_name):
+                # Index doesn't exist under either name — skip silently
+                pass
+
+
+def safe_contracting_backward(apps, schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,26 +39,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name="availabilityslot",
-            new_name="ct_slot_service_time",
-            old_name="idx_contracting_slot_service_time",
-        ),
-        migrations.RenameIndex(
-            model_name="invoice",
-            new_name="ct_invoice_payment",
-            old_name="idx_contracting_invoice_payment",
-        ),
-        migrations.RenameIndex(
-            model_name="quoterequest",
-            new_name="ct_quotereq_status",
-            old_name="idx_contracting_quotereq_status",
-        ),
-        migrations.RenameIndex(
-            model_name="servicebooking",
-            new_name="ct_booking_status",
-            old_name="idx_contracting_booking_status",
-        ),
+        migrations.RunPython(safe_contracting_forward, safe_contracting_backward),
         migrations.AlterField(
             model_name="availabilityslot",
             name="store",

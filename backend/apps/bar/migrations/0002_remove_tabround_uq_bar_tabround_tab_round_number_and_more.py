@@ -7,6 +7,43 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def _index_exists(cursor, name):
+    cursor.execute("SELECT 1 FROM pg_indexes WHERE indexname = %s", [name])
+    return cursor.fetchone() is not None
+
+
+def _constraint_exists(cursor, table, name):
+    cursor.execute(
+        "SELECT 1 FROM information_schema.table_constraints "
+        "WHERE table_name = %s AND constraint_name = %s",
+        [table, name],
+    )
+    return cursor.fetchone() is not None
+
+
+def safe_bar_forward(apps, schema_editor):
+    with schema_editor.connection.cursor() as cursor:
+        # RenameIndex: idx_bar_agerestrictionlog_tab_customer → bar_agelog_tab_customer
+        old = "idx_bar_agerestrictionlog_tab_customer"
+        new = "bar_agelog_tab_customer"
+        if _index_exists(cursor, old) and not _index_exists(cursor, new):
+            schema_editor.execute(f'ALTER INDEX "{old}" RENAME TO "{new}"')
+        elif not _index_exists(cursor, old) and not _index_exists(cursor, new):
+            schema_editor.execute(
+                f'CREATE INDEX "{new}" ON "bar_agerestrictionlog" ("tab_id", "customer_id")'
+            )
+
+        # RemoveConstraint: uq_bar_tabround_tab_round_number (idempotent)
+        if _constraint_exists(cursor, "bar_tabround", "uq_bar_tabround_tab_round_number"):
+            schema_editor.execute(
+                'ALTER TABLE "bar_tabround" DROP CONSTRAINT "uq_bar_tabround_tab_round_number"'
+            )
+
+
+def safe_bar_backward(apps, schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -16,15 +53,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveConstraint(
-            model_name="tabround",
-            name="uq_bar_tabround_tab_round_number",
-        ),
-        migrations.RenameIndex(
-            model_name="agerestrictionlog",
-            new_name="bar_agelog_tab_customer",
-            old_name="idx_bar_agerestrictionlog_tab_customer",
-        ),
+        migrations.RunPython(safe_bar_forward, safe_bar_backward),
         migrations.AlterField(
             model_name="agerestrictionlog",
             name="customer_phone",
