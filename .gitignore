@@ -20,6 +20,7 @@ eggs/
 lib/
 !storefront/src/lib/
 !admin/src/lib/
+!packages/shared/src/lib/
 lib64/
 parts/
 sdist/
