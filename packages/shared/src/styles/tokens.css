@@ -1,9 +1,11 @@
-@import "tailwindcss";
-
 /*
- * Design tokens — Material Design 3-inspired palette from docs/templates/.
- * Source of truth: packages/shared/src/styles/tokens.css
- * Kept inline here because PostCSS cannot resolve CSS imports from npm packages.
+ * @joat/shared design tokens
+ *
+ * Material Design 3-inspired palette derived from your HTML templates.
+ * Import this in both storefront and admin globals.css:
+ *   @import "@joat/shared/styles/tokens.css";
+ *
+ * Admin overrides the dark tokens. Storefront uses light + runtime theming.
  */
 
 :root {
@@ -80,33 +82,70 @@
   --sidebar-collapsed-width: 72px;
   --header-height: 64px;
   --container-max: 1280px;
-
-  /* ── Storefront theme tokens (overridden at runtime by TenantThemeProvider) */
-  --color-primary: #1a1a1a;
-  --color-secondary: #6b7280;
-  --color-accent: #e63946;
-  --color-background: #ffffff;
-  --color-surface: #f9fafb;
-  --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
-  --color-success: #16a34a;
-  --color-error: #dc2626;
-  --color-warning: #f59e0b;
-  --header-bg: #1a1a1a;
-  --header-text: #ffffff;
-  --footer-bg: #1f2937;
-  --footer-text: #f3f4f6;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── Dark mode tokens (admin / POS) ─────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-primary: #93c5fd;
+    --md-on-primary: #031427;
+    --md-primary-container: #1e3a5f;
+    --md-on-primary-container: #dbeafe;
+
+    --md-secondary: #94a3b8;
+    --md-on-secondary: #0f172a;
+    --md-secondary-container: #1e293b;
+    --md-on-secondary-container: #cbd5e1;
+
+    --md-tertiary: #38bdf8;
+    --md-on-tertiary: #0c4a6e;
+    --md-tertiary-container: #0c4a6e;
+    --md-on-tertiary-container: #e0f2fe;
+
+    --md-surface: #031427;
+    --md-on-surface: #d3e4fe;
+    --md-surface-variant: #0f2942;
+    --md-on-surface-variant: #94a3b8;
+    --md-surface-container: #0a1f38;
+    --md-surface-container-low: #061829;
+    --md-surface-container-high: #0f2942;
+
+    --md-outline: #1e3a5f;
+    --md-outline-variant: #162d4a;
+
+    --glass-bg: rgba(10, 31, 56, 0.7);
+    --glass-border: rgba(147, 197, 253, 0.1);
+  }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-body);
+/* ── Admin dark class override ──────────────────────────────────────────── */
+.dark {
+  --md-primary: #93c5fd;
+  --md-on-primary: #031427;
+  --md-primary-container: #1e3a5f;
+  --md-on-primary-container: #dbeafe;
+
+  --md-secondary: #94a3b8;
+  --md-on-secondary: #0f172a;
+  --md-secondary-container: #1e293b;
+  --md-on-secondary-container: #cbd5e1;
+
+  --md-tertiary: #38bdf8;
+  --md-on-tertiary: #0c4a6e;
+  --md-tertiary-container: #0c4a6e;
+  --md-on-tertiary-container: #e0f2fe;
+
+  --md-surface: #031427;
+  --md-on-surface: #d3e4fe;
+  --md-surface-variant: #0f2942;
+  --md-on-surface-variant: #94a3b8;
+  --md-surface-container: #0a1f38;
+  --md-surface-container-low: #061829;
+  --md-surface-container-high: #0f2942;
+
+  --md-outline: #1e3a5f;
+  --md-outline-variant: #162d4a;
+
+  --glass-bg: rgba(10, 31, 56, 0.7);
+  --glass-border: rgba(147, 197, 253, 0.1);
 }

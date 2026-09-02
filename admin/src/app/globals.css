@@ -1,8 +1,161 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens — Material Design 3-inspired palette from docs/templates/.
+ * Source of truth: packages/shared/src/styles/tokens.css
+ * Kept inline here because PostCSS cannot resolve CSS imports from npm packages.
+ */
+
 :root {
+  /* ── Material Design 3 color tokens (light) ──────────────────────────── */
+  --md-primary: #0f172a;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #e0e7ff;
+  --md-on-primary-container: #1e1b4b;
+
+  --md-secondary: #475569;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #f1f5f9;
+  --md-on-secondary-container: #334155;
+
+  --md-tertiary: #0284c7;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #e0f2fe;
+  --md-on-tertiary-container: #0c4a6e;
+
+  --md-surface: #f8fafc;
+  --md-on-surface: #0f172a;
+  --md-surface-variant: #f1f5f9;
+  --md-on-surface-variant: #475569;
+  --md-surface-container: #ffffff;
+  --md-surface-container-low: #f8fafc;
+  --md-surface-container-high: #f1f5f9;
+
+  --md-outline: #cbd5e1;
+  --md-outline-variant: #e2e8f0;
+
+  --md-success: #16a34a;
+  --md-success-container: #dcfce7;
+  --md-error: #dc2626;
+  --md-error-container: #fee2e2;
+  --md-warning: #f59e0b;
+  --md-warning-container: #fef3c7;
+
+  /* ── Spacing ─────────────────────────────────────────────────────────── */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-touch: 48px;
+
+  /* ── Radius ──────────────────────────────────────────────────────────── */
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ─────────────────────────────────────────────────────────── */
+  --shadow-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-elevated: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-float: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* ── Glass ───────────────────────────────────────────────────────────── */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-blur: 12px;
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* ── Layout ──────────────────────────────────────────────────────────── */
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 64px;
+  --container-max: 1280px;
+
+  /* ── Admin light defaults ────────────────────────────────────────────── */
   --background: #ffffff;
   --foreground: #171717;
+}
+
+/* ── Dark mode tokens (admin / POS) ─────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-primary: #93c5fd;
+    --md-on-primary: #031427;
+    --md-primary-container: #1e3a5f;
+    --md-on-primary-container: #dbeafe;
+
+    --md-secondary: #94a3b8;
+    --md-on-secondary: #0f172a;
+    --md-secondary-container: #1e293b;
+    --md-on-secondary-container: #cbd5e1;
+
+    --md-tertiary: #38bdf8;
+    --md-on-tertiary: #0c4a6e;
+    --md-tertiary-container: #0c4a6e;
+    --md-on-tertiary-container: #e0f2fe;
+
+    --md-surface: #031427;
+    --md-on-surface: #d3e4fe;
+    --md-surface-variant: #0f2942;
+    --md-on-surface-variant: #94a3b8;
+    --md-surface-container: #0a1f38;
+    --md-surface-container-low: #061829;
+    --md-surface-container-high: #0f2942;
+
+    --md-outline: #1e3a5f;
+    --md-outline-variant: #162d4a;
+
+    --glass-bg: rgba(10, 31, 56, 0.7);
+    --glass-border: rgba(147, 197, 253, 0.1);
+
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* ── Admin dark class override ──────────────────────────────────────────── */
+.dark {
+  --md-primary: #93c5fd;
+  --md-on-primary: #031427;
+  --md-primary-container: #1e3a5f;
+  --md-on-primary-container: #dbeafe;
+
+  --md-secondary: #94a3b8;
+  --md-on-secondary: #0f172a;
+  --md-secondary-container: #1e293b;
+  --md-on-secondary-container: #cbd5e1;
+
+  --md-tertiary: #38bdf8;
+  --md-on-tertiary: #0c4a6e;
+  --md-tertiary-container: #0c4a6e;
+  --md-on-tertiary-container: #e0f2fe;
+
+  --md-surface: #031427;
+  --md-on-surface: #d3e4fe;
+  --md-surface-variant: #0f2942;
+  --md-on-surface-variant: #94a3b8;
+  --md-surface-container: #0a1f38;
+  --md-surface-container-low: #061829;
+  --md-surface-container-high: #0f2942;
+
+  --md-outline: #1e3a5f;
+  --md-outline-variant: #162d4a;
+
+  --glass-bg: rgba(10, 31, 56, 0.7);
+  --glass-border: rgba(147, 197, 253, 0.1);
+
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,15 +165,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
 }

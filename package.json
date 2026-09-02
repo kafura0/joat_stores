@@ -1,0 +1,17 @@
+{
+  "name": "joat-stores",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "storefront",
+    "admin"
+  ],
+  "scripts": {
+    "dev:storefront": "npm run dev --workspace=storefront",
+    "dev:admin": "npm run dev --workspace=admin",
+    "build:storefront": "npm run build --workspace=storefront",
+    "build:admin": "npm run build --workspace=admin",
+    "build:shared": "npm run build --workspace=@joat/shared",
+    "lint": "npm run lint --workspace=storefront && npm run lint --workspace=admin"
+  }
+}

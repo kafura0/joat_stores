@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@joat/shared": "*",
     "@tanstack/react-query": "^5.102.8",
     "axios": "^1.13.6",
     "date-fns": "^4.4.0",

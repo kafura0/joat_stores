@@ -1,0 +1,23 @@
+{
+  "name": "@joat/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./lib/api": "./src/lib/api.ts",
+    "./lib/utils": "./src/lib/utils.ts",
+    "./stores/auth": "./src/stores/authStore.ts"
+  },
+  "dependencies": {
+    "axios": "^1.13.6",
+    "date-fns": "^4.4.0",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

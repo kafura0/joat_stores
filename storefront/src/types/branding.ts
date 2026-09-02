@@ -1,38 +1,6 @@
-export interface ThemeData {
-  preset_slug: string;
-  template_style: string;
-  primary_color: string;
-  secondary_color: string;
-  accent_color: string;
-  background_color: string;
-  surface_color: string;
-  text_primary_color: string;
-  text_secondary_color: string;
-  success_color: string;
-  error_color: string;
-  warning_color: string;
-  header_background: string;
-  header_text_color: string;
-  footer_background: string;
-  footer_text_color: string;
-  font_family_heading: string;
-  font_family_body: string;
-  font_size_base: string;
-  font_size_scale: number;
-  section_padding_y: string;
-  card_padding: string;
-  container_max_width: string;
-  radius_sm: string;
-  radius_md: string;
-  radius_lg: string;
-  radius_full: string;
-  shadow_sm: string;
-  shadow_md: string;
-  shadow_lg: string;
-  announcement_enabled: boolean;
-  announcement_text: string;
-  custom_css: string;
-}
+import type { ThemeData } from "@joat/shared/types";
+
+export type { ThemeData };
 
 export interface BrandingData {
   store_name: string;
