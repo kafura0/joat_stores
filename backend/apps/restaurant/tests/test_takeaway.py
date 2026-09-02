@@ -101,7 +101,7 @@ def test_takeaway_payment_signal_dispatches_reference_task():
     mock_txn = MagicMock()
     mock_txn.reference = f"takeaway-{order.id}"
 
-    with patch("apps.restaurant.apps.send_takeaway_pickup_reference") as mock_task:
+    with patch("apps.restaurant.tasks.send_takeaway_pickup_reference") as mock_task:
         mock_task.apply_async.return_value = None
         _handle_payment_confirmed(sender=None, transaction=mock_txn)
 
@@ -180,7 +180,7 @@ def test_kitchen_completed_dispatches_takeaway_notification():
     from rest_framework.test import force_authenticate
     force_authenticate(request, user=user)
 
-    with patch("apps.restaurant.views.notify_takeaway_ready") as mock_task:
+    with patch("apps.restaurant.tasks.notify_takeaway_ready") as mock_task:
         mock_task.apply_async.return_value = None
         response = KitchenTicketUpdateView.as_view()(request, ticket_id=str(ticket.id))
 

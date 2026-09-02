@@ -51,7 +51,7 @@ def test_valid_token_returns_confirmation_prompt():
     request = APIRequestFactory().get("/qr/validate/", {"token": token})
     force_authenticate(request, user=UserFactory())
 
-    with patch("apps.restaurant.views.get_redis_connection", return_value=_make_redis_fresh()), \
+    with patch("django_redis.get_redis_connection", return_value=_make_redis_fresh()), \
          patch("apps.restaurant.views.settings") as mock_settings:
         mock_settings.HMAC_QR_SECRET = SECRET
         response = QRTokenValidateView.as_view()(request)
@@ -119,7 +119,7 @@ def test_expired_token_returns_user_friendly_message():
 
     request = APIRequestFactory().get("/qr/validate/", {"token": token})
 
-    with patch("apps.restaurant.views.get_redis_connection", return_value=_make_redis_fresh()), \
+    with patch("django_redis.get_redis_connection", return_value=_make_redis_fresh()), \
          patch("apps.restaurant.views.settings") as mock_settings:
         mock_settings.HMAC_QR_SECRET = SECRET
         response = QRTokenValidateView.as_view()(request)
@@ -152,7 +152,7 @@ def test_tampered_token_returns_generic_error():
 
     request = APIRequestFactory().get("/qr/validate/", {"token": tampered})
 
-    with patch("apps.restaurant.views.get_redis_connection", return_value=_make_redis_fresh()), \
+    with patch("django_redis.get_redis_connection", return_value=_make_redis_fresh()), \
          patch("apps.restaurant.views.settings") as mock_settings:
         mock_settings.HMAC_QR_SECRET = SECRET
         response = QRTokenValidateView.as_view()(request)
@@ -172,7 +172,7 @@ def test_tampered_token_returns_generic_error():
 def test_malformed_token_no_dot_returns_generic_error():
     request = APIRequestFactory().get("/qr/validate/", {"token": "notavalidtoken"})
 
-    with patch("apps.restaurant.views.get_redis_connection", return_value=_make_redis_fresh()), \
+    with patch("django_redis.get_redis_connection", return_value=_make_redis_fresh()), \
          patch("apps.restaurant.views.settings") as mock_settings:
         mock_settings.HMAC_QR_SECRET = SECRET
         response = QRTokenValidateView.as_view()(request)

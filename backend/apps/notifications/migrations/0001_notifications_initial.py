@@ -2,6 +2,8 @@
 Notifications app — Story 10.3, 10.5.
 """
 
+import uuid
+
 import django.db.models.deletion
 from django.db import migrations, models
 
@@ -19,7 +21,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="WhatsAppMessage",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("recipient_phone", models.CharField(db_index=True, max_length=30)),
                 ("template", models.CharField(choices=[("order_confirmation", "Order Confirmation"), ("loyalty_reward", "Loyalty Reward"), ("stamp_threshold", "Stamp Card Reward"), ("subscription_renewal", "Subscription Renewal"), ("generic", "Generic")], default="generic", max_length=50)),
@@ -41,7 +43,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="WhatsAppInboundMessage",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("sender_phone", models.CharField(db_index=True, max_length=30)),
                 ("raw_body", models.TextField()),

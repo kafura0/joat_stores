@@ -319,16 +319,14 @@ class TestPlanLimits:
 
     def test_product_limit_raised_at_cap(self, store, subscription, free_plan, db):
         """Free plan cap is 10 products. Simulate store at cap."""
-        from apps.product.models import Product, ProductStatus
+        from apps.product.models import Product
 
         # Create 10 products to hit the cap
         for i in range(10):
             Product.objects.create(
                 store=store,
                 name=f"Product {i}",
-                slug=f"product-{i}-{str(store.id)[:6]}",
-                base_price=Decimal("100.00"),
-                status=ProductStatus.ACTIVE,
+                is_available=True,
             )
 
         with pytest.raises(PlanLimitExceeded) as exc_info:

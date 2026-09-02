@@ -7,6 +7,8 @@ Story 10.4: CustomerProfile
 """
 
 import decimal
+import uuid
+
 import django.db.models.deletion
 import django.utils.timezone
 from django.conf import settings
@@ -27,7 +29,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="LoyaltyAccount",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("customer", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name="loyalty_accounts", to=settings.AUTH_USER_MODEL)),
                 ("customer_phone", models.CharField(db_index=True, max_length=30)),
@@ -45,7 +47,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="PointsTransaction",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("account", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="transactions", to="loyalty.loyaltyaccount")),
                 ("delta", models.IntegerField(help_text="Positive = earned, negative = redeemed/expired.")),
@@ -65,7 +67,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="StampCard",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("name", models.CharField(max_length=100)),
                 ("stamps_required", models.PositiveIntegerField(default=10)),
@@ -80,7 +82,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="CustomerStampCard",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("stamp_card", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="customer_cards", to="loyalty.stampcard")),
                 ("customer_phone", models.CharField(db_index=True, max_length=30)),
@@ -100,7 +102,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="CustomerStamp",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("customer_card", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="stamps", to="loyalty.customerstampcard")),
                 ("order_reference", models.CharField(blank=True, default="", max_length=255)),
@@ -113,7 +115,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="CustomerProfile",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ("store", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="+", to="store.store")),
                 ("customer", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="customer_profiles", to=settings.AUTH_USER_MODEL)),
                 ("customer_phone", models.CharField(db_index=True, max_length=30)),

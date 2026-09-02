@@ -224,15 +224,15 @@ class TestPeakHourPredictions:
 class TestNLPMenuSearch:
 
     def test_search_returns_results(self, owner_client, store_with_ai):
-        from apps.restaurant.models import MenuItem, MenuCategory
+        from apps.restaurant.models import MenuItem, MenuSection
 
-        cat = MenuCategory.objects.create(
+        section = MenuSection.objects.create(
             store=store_with_ai,
             name="Mains",
         )
         MenuItem.objects.create(
             store=store_with_ai,
-            category=cat,
+            section=section,
             name="Grilled Chicken",
             price=Decimal("800.00"),
             is_available=True,
@@ -259,12 +259,12 @@ class TestNLPMenuSearch:
 
     def test_nlp_search_service_icontains(self, store_with_ai):
         from apps.ai.services import NLPMenuSearchService
-        from apps.restaurant.models import MenuItem, MenuCategory
+        from apps.restaurant.models import MenuItem, MenuSection
 
-        cat = MenuCategory.objects.create(store=store_with_ai, name="Drinks")
+        section = MenuSection.objects.create(store=store_with_ai, name="Drinks")
         MenuItem.objects.create(
             store=store_with_ai,
-            category=cat,
+            section=section,
             name="Fresh Mango Juice",
             price=Decimal("200.00"),
             is_available=True,
@@ -277,13 +277,13 @@ class TestNLPMenuSearch:
 
     def test_search_max_results(self, store_with_ai):
         from apps.ai.services import NLPMenuSearchService
-        from apps.restaurant.models import MenuItem, MenuCategory
+        from apps.restaurant.models import MenuItem, MenuSection
 
-        cat = MenuCategory.objects.create(store=store_with_ai, name="Test")
+        section = MenuSection.objects.create(store=store_with_ai, name="Test")
         for i in range(25):
             MenuItem.objects.create(
                 store=store_with_ai,
-                category=cat,
+                section=section,
                 name=f"Chicken Dish {i}",
                 price=Decimal("100.00"),
                 is_available=True,

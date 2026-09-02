@@ -58,7 +58,7 @@ def test_create_reservation_status_pending():
     table = TableFactory(store=store)
     user = UserFactory()
 
-    with patch("apps.restaurant.views.send_reservation_notification") as mock_task:
+    with patch("apps.restaurant.tasks.send_reservation_notification") as mock_task:
         mock_task.apply_async.return_value = None
         request = _view_request("post", "/reservations/", data=_reservation_data(table=table), user=user, store=store)
         view = ReservationViewSet.as_view({"post": "create"})
@@ -76,7 +76,7 @@ def test_create_reservation_without_table():
     store = StoreFactory()
     user = UserFactory()
 
-    with patch("apps.restaurant.views.send_reservation_notification") as mock_task:
+    with patch("apps.restaurant.tasks.send_reservation_notification") as mock_task:
         mock_task.apply_async.return_value = None
         request = _view_request("post", "/reservations/", data=_reservation_data(), user=user, store=store)
         view = ReservationViewSet.as_view({"post": "create"})
@@ -103,7 +103,7 @@ def test_confirm_transitions_pending_to_confirmed():
         status=Reservation.STATUS_PENDING,
     )
 
-    with patch("apps.restaurant.views.send_reservation_notification") as mock_task:
+    with patch("apps.restaurant.tasks.send_reservation_notification") as mock_task:
         mock_task.apply_async.return_value = None
         request = _view_request("patch", f"/reservations/{reservation.id}/confirm/", user=user, store=store)
         view = ReservationViewSet.as_view({"patch": "confirm"})
@@ -153,7 +153,7 @@ def test_seat_creates_table_session():
         status=Reservation.STATUS_CONFIRMED,
     )
 
-    with patch("apps.restaurant.views.send_reservation_notification") as mock_task:
+    with patch("apps.restaurant.tasks.send_reservation_notification") as mock_task:
         mock_task.apply_async.return_value = None
         request = _view_request("patch", f"/reservations/{reservation.id}/seat/", user=user, store=store)
         view = ReservationViewSet.as_view({"patch": "seat"})
@@ -205,7 +205,7 @@ def test_no_show_transitions_confirmed_to_no_show():
         status=Reservation.STATUS_CONFIRMED,
     )
 
-    with patch("apps.restaurant.views.send_reservation_notification") as mock_task:
+    with patch("apps.restaurant.tasks.send_reservation_notification") as mock_task:
         mock_task.apply_async.return_value = None
         request = _view_request("patch", f"/reservations/{reservation.id}/no-show/", user=user, store=store)
         view = ReservationViewSet.as_view({"patch": "no_show"})

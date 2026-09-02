@@ -84,12 +84,12 @@ class RecommendationService:
 
     def _enrich_products(self, store, entity_ids: list[str], limit: int) -> list[dict]:
         """Resolve entity_id strings to Product dicts."""
-        from apps.product.models import Product, ProductStatus
+        from apps.product.models import Product
 
         if not entity_ids:
             # Pure popularity fallback: return best-sellers
             products = (
-                Product.objects.filter(store=store, status=ProductStatus.ACTIVE)
+                Product.objects.filter(store=store, is_available=True)
                 .order_by("-created_at")[:limit]
             )
         else:
@@ -105,15 +105,13 @@ class RecommendationService:
             products = Product.objects.filter(
                 store=store,
                 id__in=valid_ids,
-                status=ProductStatus.ACTIVE,
+                is_available=True,
             )[:limit]
 
         return [
             {
                 "product_id": str(p.id),
                 "name": p.name,
-                "base_price": str(p.base_price),
-                "slug": p.slug,
                 "score": None,  # not exposed at MVP
             }
             for p in products
@@ -232,7 +230,7 @@ class NLPMenuSearchService:
                 "name": item.name,
                 "description": item.description or "",
                 "price": str(item.price),
-                "category": item.category or "",
+                "section": item.section.name if item.section else "",
                 "is_available": item.is_available,
             }
             for item in items

@@ -139,10 +139,10 @@ class OfflineInventorySnapshotView(APIView):
                 status=404,
             )
 
-        from apps.product.models import Product, ProductStatus
+        from apps.product.models import Product
 
         products = (
-            Product.objects.filter(store=store, status=ProductStatus.ACTIVE)
+            Product.objects.filter(store=store, is_available=True)
             .prefetch_related("variants")
         )
 
@@ -153,7 +153,7 @@ class OfflineInventorySnapshotView(APIView):
                     "id": str(v.id),
                     "sku": v.sku,
                     "name": v.name,
-                    "price": str(v.price) if v.price else str(product.base_price),
+                    "price": str(v.price),
                     "inventory_count": v.inventory_count,
                     "is_in_stock": v.inventory_count > 0,
                 }
@@ -162,8 +162,6 @@ class OfflineInventorySnapshotView(APIView):
             snapshot.append({
                 "id": str(product.id),
                 "name": product.name,
-                "slug": product.slug,
-                "base_price": str(product.base_price),
                 "variants": variants,
             })
 

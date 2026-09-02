@@ -43,7 +43,7 @@ def test_pay_endpoint_initiates_stk_push():
     request = APIRequestFactory().post(f"/pending-orders/{pending.id}/pay/", {}, format="json")
     request.store = store
 
-    with patch("apps.restaurant.views.initiate_payment", return_value=mock_txn) as mock_init:
+    with patch("apps.payment.services.initiate_payment", return_value=mock_txn) as mock_init:
         response = PendingOrderPayView.as_view()(request, order_id=str(pending.id))
 
     assert response.status_code == 200
@@ -82,7 +82,7 @@ def test_pay_endpoint_rate_limited_returns_429():
     request = APIRequestFactory().post(f"/pending-orders/{pending.id}/pay/", {}, format="json")
     request.store = store
 
-    with patch("apps.restaurant.views.initiate_payment", side_effect=StkPushRateLimitedError(retry_after)):
+    with patch("apps.payment.services.initiate_payment", side_effect=StkPushRateLimitedError(retry_after)):
         response = PendingOrderPayView.as_view()(request, order_id=str(pending.id))
 
     assert response.status_code == 429

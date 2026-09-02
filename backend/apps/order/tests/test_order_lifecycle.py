@@ -148,7 +148,7 @@ def test_direct_status_patch_returns_422(store, user, order):
 
 @pytest.mark.django_db
 def test_order_confirm_dispatches_email_task(store, user, order):
-    with patch("apps.order.views.send_order_confirmation") as mock_task:
+    with patch("apps.order.tasks.send_order_confirmation") as mock_task:
         req = _view_request("post", f"/api/v1/store/orders/{order.id}/confirm/",
                             user=user, store=store)
         view = OrderConfirmView.as_view()

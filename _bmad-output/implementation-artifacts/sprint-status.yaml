@@ -67,7 +67,7 @@ development_status:
   2-3-daraja-webhook-processing-receipt-idempotency: done
   2-4-stk-push-timeout-expired-status: done
   2-5-payment-reconciliation-reversal: done
-  2-6-multi-provider-payment-routing-card-payments: backlog
+  2-6-multi-provider-payment-routing-card-payments: cancelled  # Card payments not needed for v1
   epic-2-retrospective: optional
 
   # =============================================================================

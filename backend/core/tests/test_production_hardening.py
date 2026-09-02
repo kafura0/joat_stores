@@ -96,13 +96,11 @@ class TestRequestIDMiddleware:
 class TestOfflineInventorySnapshot:
 
     def test_snapshot_returns_products(self, owner_client, store):
-        from apps.product.models import Product, ProductStatus
+        from apps.product.models import Product
         Product.objects.create(
             store=store,
             name="Test Product",
-            slug="test-product",
-            base_price=Decimal("500.00"),
-            status=ProductStatus.ACTIVE,
+            is_available=True,
         )
         resp = owner_client.get("/api/v1/store/offline-snapshot/")
         assert resp.status_code == 200
@@ -115,10 +113,10 @@ class TestOfflineInventorySnapshot:
         assert "generated_at" in resp.data
 
     def test_snapshot_only_active_products(self, owner_client, store):
-        from apps.product.models import Product, ProductStatus
+        from apps.product.models import Product
         Product.objects.create(
-            store=store, name="Inactive", slug="inactive-prod",
-            base_price=Decimal("100.00"), status=ProductStatus.DRAFT,
+            store=store, name="Inactive",
+            is_available=False,
         )
         resp = owner_client.get("/api/v1/store/offline-snapshot/")
         names = [p["name"] for p in resp.data["products"]]
