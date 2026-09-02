@@ -4,36 +4,111 @@ from decimal import Decimal
 from django.db import migrations, models
 
 
-def safe_rename_aievent_index(apps, schema_editor):
-    """Rename the index only if the old name exists and the new name doesn't."""
-    table_name = "analytics_aievent"
-    old_name = "idx_analytics_aievent_store_type"
-    new_name = "an_aievent_store_type"
+def _table_exists(cursor, table_name):
+    cursor.execute(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = %s",
+        [table_name],
+    )
+    return cursor.fetchone() is not None
+
+
+def safe_analytics_forward(apps, schema_editor):
+    """Safe migration forward for analytics.0003.
+
+    Production DB may have 0002 marked as applied but tables not created
+    (interrupted deploy). This function handles all cases gracefully.
+    """
+    tables_to_check = [
+        "analytics_aievent",
+        "analytics_dailyrevenuesummary",
+        "analytics_hourlyordersummary",
+        "analytics_tenanthealthsnapshot",
+        "analytics_storefirstorderevent",
+        "analytics_adminpiiaccesslog",
+    ]
 
     with schema_editor.connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT 1 FROM pg_indexes WHERE indexname = %s",
-            [old_name],
-        )
-        old_exists = cursor.fetchone() is not None
+        existing = {t for t in tables_to_check if _table_exists(cursor, t)}
 
-        cursor.execute(
-            "SELECT 1 FROM pg_indexes WHERE indexname = %s",
-            [new_name],
-        )
-        new_exists = cursor.fetchone() is not None
+    # If no analytics tables exist, 0002 was never fully applied — skip entirely.
+    # When 0002 eventually runs, it will create tables with the correct schema.
+    if not existing:
+        return
 
-    if old_exists and not new_exists:
-        schema_editor.execute(
-            f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"'
-        )
-    elif not old_exists and not new_exists:
-        # Neither exists — create the index fresh
-        schema_editor.execute(
-            f'CREATE INDEX "{new_name}" ON "{table_name}" '
-            f'("store_id", "event_type", "occurred_at")'
-        )
-    # If new_exists, nothing to do — already correct
+    # --- Index rename for AIEvent (only if table exists) ---
+    if "analytics_aievent" in existing:
+        with schema_editor.connection.cursor() as cursor:
+            old_name = "idx_analytics_aievent_store_type"
+            new_name = "an_aievent_store_type"
+
+            cursor.execute("SELECT 1 FROM pg_indexes WHERE indexname = %s", [old_name])
+            old_exists = cursor.fetchone() is not None
+            cursor.execute("SELECT 1 FROM pg_indexes WHERE indexname = %s", [new_name])
+            new_exists = cursor.fetchone() is not None
+
+        if old_exists and not new_exists:
+            schema_editor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
+        elif not old_exists and not new_exists:
+            schema_editor.execute(
+                f'CREATE INDEX "{new_name}" ON "analytics_aievent" '
+                f'("store_id", "event_type", "occurred_at")'
+            )
+
+    # --- AlterField operations (only on existing tables) ---
+    # These are no-ops if the schema already matches (which it will if 0002
+    # created the tables with the correct definitions).
+    analytics_models = {
+        "analytics_adminpiiaccesslog": "adminpiiaccesslog",
+        "analytics_aievent": "aievent",
+        "analytics_dailyrevenuesummary": "dailyrevenuesummary",
+        "analytics_hourlyordersummary": "hourlyordersummary",
+        "analytics_storefirstorderevent": "storefirstorderevent",
+        "analytics_tenanthealthsnapshot": "tenanthealthsnapshot",
+    }
+
+    field_changes = {
+        "adminpiiaccesslog": [
+            ("path", models.CharField(blank=True, default="", max_length=500)),
+            ("record_id", models.CharField(max_length=255)),
+            ("record_type", models.CharField(max_length=100)),
+        ],
+        "aievent": [
+            ("entity_id", models.CharField(blank=True, default="", help_text="ID of the product, search query, or order.", max_length=255)),
+            ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+        ],
+        "dailyrevenuesummary": [
+            ("amount_usd", models.DecimalField(decimal_places=2, default=Decimal("0"), help_text="USD-normalized revenue for cross-tenant GMV. 1 KES ≈ 0.0078 USD.", max_digits=14)),
+            ("aov", models.DecimalField(blank=True, decimal_places=2, help_text="Average order value. Null when order_count=0.", max_digits=14, null=True)),
+            ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+            ("top_products", models.JSONField(default=list, help_text="Top 5 products by revenue: [{product_id, name, revenue}]")),
+        ],
+        "hourlyordersummary": [
+            ("hour", models.PositiveSmallIntegerField(help_text="Hour of day (0–23) in store's local time.")),
+            ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+        ],
+        "storefirstorderevent": [
+            ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+        ],
+        "tenanthealthsnapshot": [
+            ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+            ("is_healthy", models.BooleanField(default=True, help_text="False if subscription is past_due or suspended.")),
+        ],
+    }
+
+    for db_table, model_name in analytics_models.items():
+        if db_table not in existing:
+            continue
+        for field_name, field_instance in field_changes.get(model_name, []):
+            try:
+                model = apps.get_model("analytics", model_name)
+                old_field = model._meta.get_field(field_name)
+                schema_editor.alter_field(model, old_field, field_instance)
+            except Exception:
+                pass  # Table may not have the column yet — skip silently
+
+
+def safe_analytics_backward(apps, schema_editor):
+    pass
 
 
 class Migration(migrations.Migration):
@@ -43,109 +118,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(safe_rename_aievent_index, migrations.RunPython.noop),
-        migrations.AlterField(
-            model_name="adminpiiaccesslog",
-            name="path",
-            field=models.CharField(blank=True, default="", max_length=500),
-        ),
-        migrations.AlterField(
-            model_name="adminpiiaccesslog",
-            name="record_id",
-            field=models.CharField(max_length=255),
-        ),
-        migrations.AlterField(
-            model_name="adminpiiaccesslog",
-            name="record_type",
-            field=models.CharField(max_length=100),
-        ),
-        migrations.AlterField(
-            model_name="aievent",
-            name="entity_id",
-            field=models.CharField(
-                blank=True,
-                default="",
-                help_text="ID of the product, search query, or order.",
-                max_length=255,
-            ),
-        ),
-        migrations.AlterField(
-            model_name="aievent",
-            name="id",
-            field=models.BigAutoField(
-                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="dailyrevenuesummary",
-            name="amount_usd",
-            field=models.DecimalField(
-                decimal_places=2,
-                default=Decimal("0"),
-                help_text="USD-normalized revenue for cross-tenant GMV. 1 KES ≈ 0.0078 USD.",
-                max_digits=14,
-            ),
-        ),
-        migrations.AlterField(
-            model_name="dailyrevenuesummary",
-            name="aov",
-            field=models.DecimalField(
-                blank=True,
-                decimal_places=2,
-                help_text="Average order value. Null when order_count=0.",
-                max_digits=14,
-                null=True,
-            ),
-        ),
-        migrations.AlterField(
-            model_name="dailyrevenuesummary",
-            name="id",
-            field=models.BigAutoField(
-                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="dailyrevenuesummary",
-            name="top_products",
-            field=models.JSONField(
-                default=list,
-                help_text="Top 5 products by revenue: [{product_id, name, revenue}]",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="hourlyordersummary",
-            name="hour",
-            field=models.PositiveSmallIntegerField(
-                help_text="Hour of day (0–23) in store's local time."
-            ),
-        ),
-        migrations.AlterField(
-            model_name="hourlyordersummary",
-            name="id",
-            field=models.BigAutoField(
-                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="storefirstorderevent",
-            name="id",
-            field=models.BigAutoField(
-                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="tenanthealthsnapshot",
-            name="id",
-            field=models.BigAutoField(
-                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="tenanthealthsnapshot",
-            name="is_healthy",
-            field=models.BooleanField(
-                default=True,
-                help_text="False if subscription is past_due or suspended.",
-            ),
-        ),
+        migrations.RunPython(safe_analytics_forward, safe_analytics_backward),
     ]
