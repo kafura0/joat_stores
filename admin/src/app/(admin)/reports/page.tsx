@@ -6,16 +6,16 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <p className="text-sm text-gray-500">Business analytics and reports</p>
+        <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Reports</h1>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">Business analytics and reports</p>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold">Sales Reports</h2>
+          <h2 className="font-semibold text-[var(--md-on-surface)]">Sales Reports</h2>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[var(--md-on-surface-variant)]">
             Detailed sales analytics, profit margins, and trends. Coming soon.
           </p>
         </CardContent>
@@ -23,10 +23,10 @@ export default function ReportsPage() {
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold">Inventory Reports</h2>
+          <h2 className="font-semibold text-[var(--md-on-surface)]">Inventory Reports</h2>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[var(--md-on-surface-variant)]">
             Stock movement history, dead stock analysis, and reorder reports.
             Coming soon.
           </p>

@@ -16,7 +16,7 @@ export default function CustomerDetailPage() {
   const { data: customer, isLoading } = useCustomer(id);
 
   if (isLoading) return <PageLoading />;
-  if (!customer) return <div className="p-8 text-center">Customer not found</div>;
+  if (!customer) return <div className="p-8 text-center text-[var(--md-on-surface-variant)]">Customer not found</div>;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -25,30 +25,30 @@ export default function CustomerDetailPage() {
           <ArrowLeft size={16} />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
-          <p className="text-sm text-gray-500">{customer.email || customer.phone}</p>
+          <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">{customer.name}</h1>
+          <p className="text-sm text-[var(--md-on-surface-variant)]">{customer.email || customer.phone}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent>
-            <p className="text-sm text-gray-600">Total Orders</p>
-            <p className="text-2xl font-bold">{customer.total_orders}</p>
+            <p className="text-sm text-[var(--md-on-surface-variant)]">Total Orders</p>
+            <p className="text-2xl font-bold text-[var(--md-on-surface)]">{customer.total_orders}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-sm text-gray-600">Total Spent</p>
-            <p className="text-2xl font-bold">
+            <p className="text-sm text-[var(--md-on-surface-variant)]">Total Spent</p>
+            <p className="text-2xl font-bold text-[var(--md-on-surface)]">
               {formatCurrency(customer.total_spent)}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-sm text-gray-600">Customer Since</p>
-            <p className="text-2xl font-bold">
+            <p className="text-sm text-[var(--md-on-surface-variant)]">Customer Since</p>
+            <p className="text-2xl font-bold text-[var(--md-on-surface)]">
               {formatDate(customer.created_at)}
             </p>
           </CardContent>
@@ -57,21 +57,21 @@ export default function CustomerDetailPage() {
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold">Contact Information</h2>
+          <h2 className="font-semibold text-[var(--md-on-surface)]">Contact Information</h2>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-gray-600">Name</p>
-              <p className="font-medium">{customer.name}</p>
+              <p className="text-[var(--md-on-surface-variant)]">Name</p>
+              <p className="font-medium text-[var(--md-on-surface)]">{customer.name}</p>
             </div>
             <div>
-              <p className="text-gray-600">Phone</p>
-              <p className="font-medium">{customer.phone}</p>
+              <p className="text-[var(--md-on-surface-variant)]">Phone</p>
+              <p className="font-medium text-[var(--md-on-surface)]">{customer.phone}</p>
             </div>
             <div>
-              <p className="text-gray-600">Email</p>
-              <p className="font-medium">{customer.email || "—"}</p>
+              <p className="text-[var(--md-on-surface-variant)]">Email</p>
+              <p className="font-medium text-[var(--md-on-surface)]">{customer.email || "\u2014"}</p>
             </div>
           </div>
         </CardContent>

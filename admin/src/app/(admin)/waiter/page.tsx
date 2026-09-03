@@ -24,10 +24,10 @@ export default function WaiterDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-[var(--md-on-surface)]">
             Welcome, {user?.email?.split("@")[0] ?? "Waiter"}
           </h1>
-          <p className="text-sm text-gray-500">Today&apos;s shift</p>
+          <p className="text-sm text-[var(--md-on-surface-variant)]">Today&apos;s shift</p>
         </div>
         <Button variant="ghost" onClick={handleLogout}>
           <LogOut size={16} />
@@ -64,28 +64,28 @@ export default function WaiterDashboardPage() {
 
       <Card>
         <CardContent>
-          <h2 className="mb-3 font-semibold">Recent Orders</h2>
+          <h2 className="mb-3 font-semibold text-[var(--md-on-surface)]">Recent Orders</h2>
           {stats?.recent_orders && stats.recent_orders.length > 0 ? (
             <div className="space-y-2">
               {stats.recent_orders.slice(0, 5).map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between rounded-xl border border-[var(--md-outline-variant)] p-3 transition-colors hover:bg-[var(--md-surface-variant)]"
                 >
                   <div>
-                    <p className="font-medium">#{order.order_reference}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-[var(--md-on-surface)]">#{order.order_reference}</p>
+                    <p className="text-sm text-[var(--md-on-surface-variant)]">
                       {formatTime(order.created_at)}
                     </p>
                   </div>
-                  <p className="font-semibold">
+                  <p className="font-semibold text-[var(--md-on-surface)]">
                     {formatCurrency(order.total)}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="py-4 text-center text-sm text-gray-500">
+            <p className="py-4 text-center text-sm text-[var(--md-on-surface-variant)]">
               No orders yet today
             </p>
           )}

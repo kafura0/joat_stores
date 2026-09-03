@@ -8,7 +8,6 @@ import { DataTable, TableSkeleton } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardContent } from "@/components/ui/Card";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { IOrder, OrderStatus, PaymentMethod } from "@/types";
 
@@ -33,8 +32,8 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-        <p className="text-sm text-gray-500">Transaction history</p>
+        <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Orders</h1>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">Transaction history</p>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row">
@@ -69,7 +68,7 @@ export default function OrdersPage() {
             {
               header: "Receipt",
               accessor: (item) => (
-                <span className="font-medium">#{item.order_reference}</span>
+                <span className="font-medium text-[var(--md-on-surface)]">#{item.order_reference}</span>
               ),
             },
             {
@@ -83,7 +82,7 @@ export default function OrdersPage() {
             {
               header: "Total",
               accessor: (item) => (
-                <span className="font-semibold">
+                <span className="font-semibold text-[var(--md-on-surface)]">
                   {formatCurrency(item.total)}
                 </span>
               ),

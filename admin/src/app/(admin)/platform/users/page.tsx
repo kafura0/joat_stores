@@ -20,8 +20,8 @@ export default function PlatformUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-        <p className="text-sm text-gray-500">All platform users</p>
+        <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Users</h1>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">All platform users</p>
       </div>
 
       {isLoading ? (
@@ -50,7 +50,7 @@ export default function PlatformUsersPage() {
             {
               header: "Last Login",
               accessor: (item) =>
-                item.last_login ? formatDateTime(item.last_login) : "—",
+                item.last_login ? formatDateTime(item.last_login) : "\u2014",
             },
           ]}
           data={users?.data ?? []}

@@ -63,8 +63,8 @@ export default function CategoriesPage() {
             <ArrowLeft size={16} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-            <p className="text-sm text-gray-500">Organize your products</p>
+            <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Categories</h1>
+            <p className="text-sm text-[var(--md-on-surface-variant)]">Organize your products</p>
           </div>
         </div>
         <Button onClick={() => setShowForm(true)}>
@@ -137,7 +137,7 @@ export default function CategoriesPage() {
         onClose={() => setDeleteId(null)}
         title="Delete Category"
       >
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-[var(--md-on-surface-variant)]">
           Are you sure you want to delete this category?
         </p>
         <div className="mt-4 flex justify-end gap-2">

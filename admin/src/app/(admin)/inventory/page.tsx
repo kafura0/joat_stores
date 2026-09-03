@@ -25,8 +25,8 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
-        <p className="text-sm text-gray-500">Stock levels and management</p>
+        <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Inventory</h1>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">Stock levels and management</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -52,7 +52,7 @@ export default function InventoryPage() {
         <div className="relative flex-1">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--md-on-surface-variant)]"
           />
           <Input
             placeholder="Search inventory..."

@@ -26,23 +26,23 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className="rounded-lg border bg-white p-12 text-center text-gray-500">
-        {emptyMessage}
+      <div className="glass-panel rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-12 text-center backdrop-blur-md">
+        <p className="text-[var(--md-on-surface-variant)]">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white">
+    <div className="glass-panel overflow-hidden rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] backdrop-blur-md">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="border-b bg-gray-50">
+          <thead className="border-b border-[var(--md-outline-variant)] bg-[var(--md-surface-container-high)]">
             <tr>
               {columns.map((col) => (
                 <th
                   key={String(col.header)}
                   className={cn(
-                    "px-4 py-3 text-left text-sm font-medium text-gray-700",
+                    "px-4 py-3 text-left text-sm font-medium text-[var(--md-on-surface-variant)]",
                     col.className
                   )}
                 >
@@ -57,15 +57,15 @@ export function DataTable<T>({
                 key={getKey(item, index)}
                 onClick={() => onRowClick?.(item)}
                 className={cn(
-                  "border-b last:border-0",
-                  onRowClick && "cursor-pointer hover:bg-gray-50"
+                  "border-b border-[var(--md-outline-variant)] last:border-0 transition-colors",
+                  onRowClick && "cursor-pointer hover:bg-[var(--md-surface-variant)]"
                 )}
               >
                 {columns.map((col) => (
                   <td
                     key={String(col.header)}
                     className={cn(
-                      "px-4 py-3 text-sm text-gray-700",
+                      "px-4 py-3 text-sm text-[var(--md-on-surface)]",
                       col.className
                     )}
                   >
@@ -91,13 +91,13 @@ export function TableSkeleton({
   cols?: number;
 }) {
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="glass-panel rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-4 backdrop-blur-md">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex gap-4 border-b py-3 last:border-0">
+        <div key={i} className="flex gap-4 border-b border-[var(--md-outline-variant)] py-3 last:border-0">
           {Array.from({ length: cols }).map((_, j) => (
             <div
               key={j}
-              className="h-4 flex-1 animate-pulse rounded bg-gray-200"
+              className="h-4 flex-1 animate-pulse rounded bg-[var(--md-surface-variant)]"
             />
           ))}
         </div>

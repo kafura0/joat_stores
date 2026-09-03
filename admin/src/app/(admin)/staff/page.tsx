@@ -66,8 +66,8 @@ export default function StaffPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
-          <p className="text-sm text-gray-500">Manage your team</p>
+          <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Staff</h1>
+          <p className="text-sm text-[var(--md-on-surface-variant)]">Manage your team</p>
         </div>
         <Button onClick={() => setShowForm(true)}>
           <Plus size={16} className="mr-2" />
@@ -109,7 +109,7 @@ export default function StaffPage() {
             {
               header: "Last Login",
               accessor: (item) =>
-                item.last_login ? formatDateTime(item.last_login) : "—",
+                item.last_login ? formatDateTime(item.last_login) : "\u2014",
             },
           ]}
           data={staff?.data ?? []}

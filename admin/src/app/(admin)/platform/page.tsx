@@ -16,10 +16,10 @@ export default function PlatformPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">
           JOAT STORES — Platform Overview
         </h1>
-        <p className="text-sm text-gray-500">Manage your SaaS platform</p>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">Manage your SaaS platform</p>
       </div>
 
       {isLoading ? (
@@ -42,19 +42,19 @@ export default function PlatformPage() {
           />
           <StatCard
             label="Total Users"
-            value="—"
+            value="\u2014"
             icon={<Users size={20} />}
           />
           <StatCard
             label="Platform Revenue"
-            value="—"
+            value="\u2014"
             icon={<DollarSign size={20} />}
           />
         </div>
       )}
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold">Stores</h2>
+        <h2 className="mb-4 text-lg font-semibold text-[var(--md-on-surface)]">Stores</h2>
         {isLoading ? (
           <TableSkeleton rows={5} cols={4} />
         ) : (

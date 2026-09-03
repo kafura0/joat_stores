@@ -7,16 +7,16 @@ export default function PlatformSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Platform Settings</h1>
-        <p className="text-sm text-gray-500">Configure platform-wide settings</p>
+        <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Platform Settings</h1>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">Configure platform-wide settings</p>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold">Subscription Plans</h2>
+          <h2 className="font-semibold text-[var(--md-on-surface)]">Subscription Plans</h2>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[var(--md-on-surface-variant)]">
             Manage subscription plans for stores. Coming soon.
           </p>
           <Button className="mt-4" disabled>
@@ -27,10 +27,10 @@ export default function PlatformSettingsPage() {
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold">Platform Configuration</h2>
+          <h2 className="font-semibold text-[var(--md-on-surface)]">Platform Configuration</h2>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[var(--md-on-surface-variant)]">
             Platform-wide settings like default currency, tax rates, and feature
             flags. Coming soon.
           </p>

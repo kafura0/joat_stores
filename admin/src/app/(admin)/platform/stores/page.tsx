@@ -11,8 +11,8 @@ export default function PlatformStoresPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Stores</h1>
-        <p className="text-sm text-gray-500">All registered stores</p>
+        <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Stores</h1>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">All registered stores</p>
       </div>
 
       {isLoading ? (

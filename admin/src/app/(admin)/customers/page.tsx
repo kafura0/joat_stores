@@ -59,8 +59,8 @@ export default function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500">Manage your customer base</p>
+          <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Customers</h1>
+          <p className="text-sm text-[var(--md-on-surface-variant)]">Manage your customer base</p>
         </div>
         <Button onClick={() => setShowForm(true)}>
           <Plus size={16} className="mr-2" />
@@ -79,7 +79,7 @@ export default function CustomersPage() {
       <div className="relative">
         <Search
           size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--md-on-surface-variant)]"
         />
         <Input
           placeholder="Search customers..."

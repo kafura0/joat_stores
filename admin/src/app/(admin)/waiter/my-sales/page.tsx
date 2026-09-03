@@ -14,8 +14,8 @@ export default function MySalesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">My Sales</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-xl font-bold text-[var(--md-on-surface)]">My Sales</h1>
+        <p className="text-sm text-[var(--md-on-surface-variant)]">
           {user?.email?.split("@")[0]} &middot; Today&apos;s performance
         </p>
       </div>
@@ -42,28 +42,28 @@ export default function MySalesPage() {
 
       <Card>
         <CardContent>
-          <h2 className="mb-3 font-semibold">My Order History</h2>
+          <h2 className="mb-3 font-semibold text-[var(--md-on-surface)]">My Order History</h2>
           {stats?.recent_orders && stats.recent_orders.length > 0 ? (
             <div className="space-y-2">
               {stats.recent_orders.map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between rounded-xl border border-[var(--md-outline-variant)] p-3 transition-colors hover:bg-[var(--md-surface-variant)]"
                 >
                   <div>
-                    <p className="font-medium">#{order.order_reference}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-[var(--md-on-surface)]">#{order.order_reference}</p>
+                    <p className="text-sm text-[var(--md-on-surface-variant)]">
                       {formatTime(order.created_at)} &middot; {order.items?.length ?? 0} items
                     </p>
                   </div>
-                  <p className="font-semibold">
+                  <p className="font-semibold text-[var(--md-on-surface)]">
                     {formatCurrency(order.total)}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="py-4 text-center text-sm text-gray-500">
+            <p className="py-4 text-center text-sm text-[var(--md-on-surface-variant)]">
               No orders served yet
             </p>
           )}

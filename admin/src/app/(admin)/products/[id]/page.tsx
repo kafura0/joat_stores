@@ -45,7 +45,6 @@ export default function ProductDetailPage() {
     resolver: zodResolver(schema),
   });
 
-  // Initialize form when product loads
   if (product && !watch("name")) {
     setValue("name", product.name);
     setValue("category_id", product.category_id);
@@ -79,14 +78,14 @@ export default function ProductDetailPage() {
           <ArrowLeft size={16} />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
-          <p className="text-sm text-gray-500">{product?.name}</p>
+          <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Edit Product</h1>
+          <p className="text-sm text-[var(--md-on-surface-variant)]">{product?.name}</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold">Product Details</h2>
+          <h2 className="font-semibold text-[var(--md-on-surface)]">Product Details</h2>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -118,9 +117,9 @@ export default function ProductDetailPage() {
                 type="checkbox"
                 id="is_available"
                 {...register("is_available")}
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border-[var(--md-outline)] accent-[var(--md-primary)]"
               />
-              <label htmlFor="is_available" className="text-sm text-gray-700">
+              <label htmlFor="is_available" className="text-sm text-[var(--md-on-surface-variant)]">
                 Active (available for sale)
               </label>
             </div>
@@ -145,26 +144,26 @@ export default function ProductDetailPage() {
       {product?.variants && product.variants.length > 0 && (
         <Card>
           <CardHeader>
-            <h2 className="font-semibold">Variants</h2>
+            <h2 className="font-semibold text-[var(--md-on-surface)]">Variants</h2>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {product.variants.map((variant) => (
                 <div
                   key={variant.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between rounded-xl border border-[var(--md-outline-variant)] p-3 transition-colors hover:bg-[var(--md-surface-variant)]"
                 >
                   <div>
-                    <p className="font-medium">
+                    <p className="font-medium text-[var(--md-on-surface)]">
                       {Object.values(variant.attribute_values).join(" / ") ||
                         "Default"}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      SKU: {variant.sku || "—"} &middot; Stock:{" "}
+                    <p className="text-sm text-[var(--md-on-surface-variant)]">
+                      SKU: {variant.sku || "\u2014"} &middot; Stock:{" "}
                       {variant.inventory_count}
                     </p>
                   </div>
-                  <p className="font-semibold">
+                  <p className="font-semibold text-[var(--md-on-surface)]">
                     {new Intl.NumberFormat("en-KE", {
                       style: "currency",
                       currency: "KES",
