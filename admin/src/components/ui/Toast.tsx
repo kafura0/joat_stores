@@ -11,9 +11,12 @@ const icons = {
 };
 
 const styles = {
-  success: "bg-green-50 text-green-800 border-green-200",
-  error: "bg-red-50 text-red-800 border-red-200",
-  info: "bg-blue-50 text-blue-800 border-blue-200",
+  success:
+    "bg-[var(--md-success-container)] text-[var(--md-success)] border-[var(--md-success)]/20",
+  error:
+    "bg-[var(--md-error-container)] text-[var(--md-error)] border-[var(--md-error)]/20",
+  info:
+    "bg-[var(--md-tertiary-container)] text-[var(--md-tertiary)] border-[var(--md-tertiary)]/20",
 };
 
 export function ToastContainer() {
@@ -44,11 +47,14 @@ function Toast({
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg ${styles[toast.type]}`}
+      className={`glass-panel flex items-center gap-3 rounded-xl border px-4 py-3 shadow-[var(--shadow-elevated)] backdrop-blur-md ${styles[toast.type]}`}
     >
       <Icon size={20} />
       <span className="text-sm font-medium">{toast.message}</span>
-      <button onClick={onDismiss} className="ml-2 rounded p-1 hover:bg-black/10">
+      <button
+        onClick={onDismiss}
+        className="ml-2 rounded-lg p-1 opacity-60 hover:opacity-100"
+      >
         <X size={16} />
       </button>
     </div>
