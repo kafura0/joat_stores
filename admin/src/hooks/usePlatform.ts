@@ -106,6 +106,12 @@ export function usePlatformStores() {
   });
 }
 
+export interface IOnboarding {
+  owner_email: string;
+  temporary_password: string;
+  storefront_url: string;
+}
+
 export function useCreateStore() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -117,7 +123,7 @@ export function useCreateStore() {
       currency?: string;
       country?: string;
     }) => {
-      const { data } = await api.post<{ data: IStore }>(
+      const { data } = await api.post<{ data: IStore & { onboarding?: IOnboarding } }>(
         "/platform/stores/",
         store
       );

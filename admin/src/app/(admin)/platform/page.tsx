@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useUIStore } from "@/stores/uiStore";
+import { IOnboarding } from "@/hooks/usePlatform";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -62,6 +63,8 @@ const typeColors: Record<string, string> = {
 
 export default function PlatformPage() {
   const [showCreateStore, setShowCreateStore] = useState(false);
+  const [onboarding, setOnboarding] = useState<IOnboarding | null>(null);
+  const [onboardingStoreName, setOnboardingStoreName] = useState("");
   const addToast = useUIStore((s) => s.addToast);
 
   const { data: metrics, isLoading: metricsLoading } = usePlatformMetrics();
@@ -81,13 +84,19 @@ export default function PlatformPage() {
 
   const onSubmit = async (data: StoreFormData) => {
     try {
-      await createStore.mutateAsync({
+      const result = await createStore.mutateAsync({
         ...data,
         domain: data.domain.toLowerCase().replace(/[^a-z0-9.-]/g, ""),
       });
       addToast({ type: "success", message: "Store created successfully" });
       reset();
       setShowCreateStore(false);
+
+      // Show onboarding dialog with credentials
+      if (result.onboarding) {
+        setOnboarding(result.onboarding);
+        setOnboardingStoreName(result.name);
+      }
     } catch {
       addToast({ type: "error", message: "Failed to create store" });
     }
@@ -472,6 +481,94 @@ export default function PlatformPage() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Onboarding Success Dialog */}
+      <Dialog
+        open={!!onboarding}
+        onClose={() => setOnboarding(null)}
+        title="Store Created Successfully!"
+      >
+        {onboarding && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-[var(--md-success)]/20 bg-[var(--md-success-container)] p-4 text-center">
+              <p className="text-sm font-medium text-[var(--md-success)]">
+                {onboardingStoreName} is now live!
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-variant)] p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--md-on-surface-variant)]">
+                Owner Credentials
+              </p>
+              <p className="text-sm text-[var(--md-on-surface)]">
+                Email: <span className="font-medium">{onboarding.owner_email}</span>
+              </p>
+              <p className="text-sm text-[var(--md-on-surface)]">
+                Password:{" "}
+                <span className="rounded bg-[var(--md-primary-container)] px-2 py-0.5 font-mono text-xs font-bold text-[var(--md-on-primary-container)]">
+                  {onboarding.temporary_password}
+                </span>
+              </p>
+              <p className="mt-2 text-xs text-[var(--md-on-surface-variant)]">
+                Credentials sent via email to the store owner.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--md-on-surface-variant)]">
+                Store Links
+              </p>
+              <a
+                href={onboarding.storefront_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-[var(--md-outline-variant)] p-3 transition-all hover:border-[var(--md-primary)] hover:bg-[var(--md-surface-variant)]"
+              >
+                <div className="rounded-lg bg-[var(--md-primary-container)] p-2">
+                  <svg className="h-5 w-5 text-[var(--md-primary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--md-on-surface)]">
+                    Storefront (PWA)
+                  </p>
+                  <p className="text-xs text-[var(--md-on-surface-variant)]">
+                    {onboarding.storefront_url}
+                  </p>
+                </div>
+              </a>
+              <a
+                href="https://joat-stores-admin.vercel.app/login"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-[var(--md-outline-variant)] p-3 transition-all hover:border-[var(--md-primary)] hover:bg-[var(--md-surface-variant)]"
+              >
+                <div className="rounded-lg bg-[var(--md-tertiary-container)] p-2">
+                  <svg className="h-5 w-5 text-[var(--md-tertiary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 7.41A2.25 2.25 0 0 1 2.25 5.498V5.25" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--md-on-surface)]">
+                    Admin Dashboard
+                  </p>
+                  <p className="text-xs text-[var(--md-on-surface-variant)]">
+                    Login with owner credentials
+                  </p>
+                </div>
+              </a>
+            </div>
+
+            <Button
+              onClick={() => setOnboarding(null)}
+              className="w-full"
+            >
+              Done
+            </Button>
+          </div>
+        )}
       </Dialog>
     </div>
   );

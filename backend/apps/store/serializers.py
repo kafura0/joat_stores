@@ -62,7 +62,13 @@ class StoreProvisionSerializer(serializers.Serializer):
         return slug
 
     def create(self, validated_data):
+        import secrets
+        from apps.store.tasks import send_store_onboarding_email
+
         owner_email = validated_data.pop("owner_email")
+
+        # Generate a temporary password for the owner
+        temporary_password = secrets.token_urlsafe(12)
 
         with transaction.atomic():
             # Slug generation inside transaction — prevents race where two concurrent
@@ -78,12 +84,28 @@ class StoreProvisionSerializer(serializers.Serializer):
                 status="trial",
             )
 
-            User.objects.create_user(
+            owner = User.objects.create_user(
                 email=owner_email,
-                password=None,
+                password=temporary_password,
                 store=store,
                 role=User.Role.STORE_OWNER,
             )
+
+        # Send onboarding email (async via Celery)
+        send_store_onboarding_email.delay(
+            store_id=str(store.id),
+            store_name=store.name,
+            store_slug=store.slug,
+            owner_email=owner_email,
+            temporary_password=temporary_password,
+        )
+
+        # Attach onboarding details to the store instance for the response
+        store._onboarding = {
+            "owner_email": owner_email,
+            "temporary_password": temporary_password,
+            "storefront_url": f"https://{store.slug}.vercel.app",
+        }
 
         return store
 

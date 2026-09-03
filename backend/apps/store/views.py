@@ -45,6 +45,12 @@ class StoreProvisionView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         store = serializer.save()
         detail = StoreDetailSerializer(store).data
+
+        # Include onboarding details in response
+        onboarding = getattr(store, "_onboarding", None)
+        if onboarding:
+            detail["onboarding"] = onboarding
+
         return Response(
             {"data": detail},
             status=status.HTTP_201_CREATED,
