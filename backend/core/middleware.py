@@ -22,6 +22,8 @@ import uuid
 from django.conf import settings
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
+from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 
 class TenantMiddleware(MiddlewareMixin):
@@ -45,6 +47,9 @@ class TenantMiddleware(MiddlewareMixin):
         path = request.path_info
         host = request.get_host().split(":")[0].lower()
 
+        # Extract JWT claims for tenant isolation checks
+        self._extract_jwt_claims(request)
+
         # 1. Path bypass — health check, Django admin, OpenAPI schema, etc.
         bypass_paths = getattr(
             settings,
@@ -55,13 +60,36 @@ class TenantMiddleware(MiddlewareMixin):
             request.store = None
             return None
 
-        # 2. X-Store-ID header lookup (UUID) — explicit override, even for platform subdomains
+        # 2. X-Store-ID header lookup (UUID) — explicit override
+        # SECURITY: Only platform admins and store owners can use X-Store-ID.
+        # Regular users (staff/customers) are restricted to their JWT store_id
+        # to prevent cross-tenant data access.
         store_id_header = request.headers.get("X-Store-ID")
         if store_id_header:
             try:
                 store_uuid = uuid.UUID(store_id_header)
                 store = Store.objects.filter(id=store_uuid).first()
                 if store is not None:
+                    # Validate X-Store-ID against JWT claims for non-admin users
+                    jwt_store_id = getattr(request, "jwt_store_id", None)
+                    jwt_role = getattr(request, "jwt_role", None)
+                    if jwt_store_id is not None and jwt_role not in (
+                        "platform_admin",
+                        "store_owner",
+                    ):
+                        # Staff/customer trying to access a different store → reject
+                        if str(store_uuid) != str(jwt_store_id):
+                            return JsonResponse(
+                                {
+                                    "errors": [{
+                                        "field": "X-Store-ID",
+                                        "message": "Access denied: you cannot switch stores.",
+                                        "code": "FORBIDDEN",
+                                    }]
+                                },
+                                status=403,
+                            )
+
                     # Suspended → 503 (exempt branding passthrough at step 6)
                     SUSPENDED_PASSTHROUGH_PATHS = getattr(
                         settings, "SUSPENDED_PASSTHROUGH_PATHS", ["/api/v1/store/branding/"]
@@ -128,6 +156,25 @@ class TenantMiddleware(MiddlewareMixin):
         # 7. Set store on request
         request.store = store
         return None
+
+    def _extract_jwt_claims(self, request):
+        """
+        Extract store_id and role from the JWT token in the Authorization header.
+        Sets request.jwt_store_id and request.jwt_role for tenant isolation checks.
+        Runs before TenantMiddleware resolves request.store.
+        """
+        request.jwt_store_id = None
+        request.jwt_role = None
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return
+        token_str = auth_header[7:]
+        try:
+            token = AccessToken(token_str)
+            request.jwt_store_id = token.get("store_id")
+            request.jwt_role = token.get("role")
+        except (InvalidToken, TokenError):
+            pass  # Invalid/expired token — views will handle auth
 
 
 # ---------------------------------------------------------------------------

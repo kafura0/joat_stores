@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Save, Upload } from "lucide-react";
+import { Save, Image, AlertTriangle } from "lucide-react";
 import { useStoreSettings, useUpdateStoreSettings } from "@/hooks/useStoreSettings";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -31,7 +31,7 @@ export default function SettingsPage() {
   const addToast = useUIStore((s) => s.addToast);
   const { data: settings, isLoading } = useStoreSettings();
   const updateSettings = useUpdateStoreSettings();
-  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const {
     register,
@@ -39,6 +39,7 @@ export default function SettingsPage() {
     formState: { errors, isDirty },
     reset,
     watch,
+    setValue,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     values: settings
@@ -54,6 +55,8 @@ export default function SettingsPage() {
         }
       : undefined,
   });
+
+  const logoUrl = watch("logo_url");
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -78,22 +81,61 @@ export default function SettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Store Profile */}
+        {/* Logo & Branding */}
         <Card>
           <CardHeader>
-            <h2 className="font-semibold text-[var(--md-on-surface)]">Store Profile</h2>
+            <h2 className="font-semibold text-[var(--md-on-surface)]">Logo & Branding</h2>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-[var(--md-on-surface-variant)]">Email</p>
-              <p className="font-medium text-[var(--md-on-surface)]">{user?.email}</p>
+            <div className="flex items-start gap-6">
+              {/* Logo preview */}
+              <div className="flex-shrink-0">
+                <div className="h-24 w-24 overflow-hidden rounded-2xl border-2 border-dashed border-[var(--md-outline-variant)] bg-[var(--md-surface-variant)]">
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt="Store logo"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "";
+                        setLogoPreview(null);
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Image size={32} className="text-[var(--md-on-surface-variant)]" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Logo URL input */}
+              <div className="flex-1 space-y-3">
+                <Input
+                  label="Logo URL"
+                  {...register("logo_url")}
+                  placeholder="https://example.com/logo.png"
+                  error={errors.logo_url?.message}
+                />
+                <p className="text-xs text-[var(--md-on-surface-variant)]">
+                  Paste a URL to your logo image. Recommended: 200x200px, PNG or SVG.
+                </p>
+                {logoUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setValue("logo_url", "", { shouldDirty: true });
+                      setLogoPreview(null);
+                    }}
+                  >
+                    Remove logo
+                  </Button>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-[var(--md-on-surface-variant)]">Role</p>
-              <p className="font-medium capitalize text-[var(--md-on-surface)]">
-                {user?.role?.replace("_", " ")}
-              </p>
-            </div>
+
             <Input
               label="Store Tagline"
               {...register("tagline")}
@@ -132,9 +174,15 @@ export default function SettingsPage() {
                 Tax-inclusive pricing (prices include tax)
               </label>
             </div>
-            <p className="text-xs text-[var(--md-on-surface-variant)]">
-              Kenya standard: 16% VAT, tax-inclusive. Prices displayed to customers include tax.
-            </p>
+            <div className="rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-variant)] p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="mt-0.5 text-[var(--md-on-surface-variant)]" />
+                <p className="text-xs text-[var(--md-on-surface-variant)]">
+                  Kenya standard: 16% VAT, tax-inclusive. Prices displayed to customers include tax.
+                  The tax amount is calculated and shown on receipts.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -172,6 +220,24 @@ export default function SettingsPage() {
               {...register("receipt_footer")}
               placeholder="e.g. Visit us again!"
             />
+            {/* Receipt preview */}
+            <div className="rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface)] p-4">
+              <p className="mb-2 text-xs font-medium uppercase text-[var(--md-on-surface-variant)]">
+                Receipt Preview
+              </p>
+              <div className="space-y-1 text-center text-xs text-[var(--md-on-surface)]">
+                <p className="font-bold">{user?.email?.split("@")[0] || "Your Store"}</p>
+                {watch("receipt_header") && <p>{watch("receipt_header")}</p>}
+                <div className="my-2 border-t border-dashed border-[var(--md-outline-variant)]" />
+                <p>Tusker Lager x2 — KES 700</p>
+                <p>Subtotal — KES 700</p>
+                <p>VAT (16%) — KES 112</p>
+                <p className="font-bold">Total — KES 812</p>
+                <div className="my-2 border-t border-dashed border-[var(--md-outline-variant)]" />
+                {watch("receipt_footer") && <p>{watch("receipt_footer")}</p>}
+                <p className="text-[10px] text-[var(--md-on-surface-variant)]">Powered by joat stores</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

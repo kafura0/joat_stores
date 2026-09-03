@@ -75,10 +75,10 @@ class TestStoreProvisionSerializer(TestCase):
         sub = StoreSubscription.objects.get(store=store)
         assert sub.status == SubscriptionStatus.TRIAL
 
-        # store_owner User created
+        # store_owner User created with temporary password
         owner = User.objects.get(store=store, role="store_owner")
         assert owner.email == "owner@test.com"
-        assert not owner.has_usable_password()
+        assert owner.has_usable_password()  # Has temp password from onboarding
 
     def test_provision_domain_conflict_returns_error(self):
         Store.objects.create(

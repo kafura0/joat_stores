@@ -321,6 +321,15 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.saas.tasks.anonymise_cancelled_store_pii",
         "schedule": crontab(hour=2, minute=0),  # daily at 02:00
     },
+    # Trial lifecycle (Story 9.2)
+    "expire-trials": {
+        "task": "apps.saas.tasks.expire_trials",
+        "schedule": crontab(hour=0, minute=30),  # daily at 00:30
+    },
+    "activate-trial-subscriptions": {
+        "task": "apps.saas.tasks.activate_trial_subscriptions",
+        "schedule": crontab(hour=0, minute=15),  # daily at 00:15
+    },
 }
 
 # ---------------------------------------------------------------------------

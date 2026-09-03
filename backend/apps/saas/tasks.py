@@ -202,3 +202,84 @@ def anonymise_cancelled_store_pii(self) -> None:
     except Exception as exc:
         logger.exception("anonymise_pii_failed")
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+
+
+# ---------------------------------------------------------------------------
+# Trial expiration pipeline
+# ---------------------------------------------------------------------------
+
+
+@shared_task(
+    bind=True,
+    base=DLQTask,
+    queue="billing.reminders",
+    max_retries=3,
+)
+def expire_trials(self) -> None:
+    """
+    Transition trials that have passed their trial_ends_at date to past_due.
+
+    Scheduled: daily at 00:30 via Celery Beat.
+    """
+    try:
+        from apps.saas.models import StoreSubscription, SubscriptionStatus, InvalidSubscriptionTransition
+
+        today = timezone.localdate()
+        expired_trials = StoreSubscription.objects.filter(
+            status=SubscriptionStatus.TRIAL,
+            trial_ends_at__lte=today,
+        )
+
+        expired = 0
+        for sub in expired_trials:
+            try:
+                # If they have a paid plan, move to past_due; otherwise cancel
+                if sub.plan and sub.plan.price_kes > 0:
+                    sub.transition_status(SubscriptionStatus.PAST_DUE)
+                else:
+                    sub.transition_status(SubscriptionStatus.CANCELLED)
+                expired += 1
+                logger.info("trial_expired", store_id=str(sub.store_id), new_status=sub.status)
+            except InvalidSubscriptionTransition:
+                pass
+
+        logger.info("expire_trials_complete", expired=expired)
+
+    except Exception as exc:
+        logger.exception("expire_trials_failed")
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+
+
+@shared_task(
+    bind=True,
+    base=DLQTask,
+    queue="billing.reminders",
+    max_retries=3,
+)
+def activate_trial_subscriptions(self) -> None:
+    """
+    Set trial_ends_at for new subscriptions that don't have it set yet.
+
+    Runs on store creation — sets trial period from the plan's trial_days.
+    """
+    try:
+        from apps.saas.models import StoreSubscription, SubscriptionStatus
+
+        # Find trial subscriptions without trial_ends_at
+        unset = StoreSubscription.objects.filter(
+            status=SubscriptionStatus.TRIAL,
+            trial_ends_at__isnull=True,
+        ).select_related("plan")
+
+        activated = 0
+        for sub in unset:
+            trial_days = sub.plan.trial_days if sub.plan else 14
+            sub.trial_ends_at = timezone.localdate() + timedelta(days=trial_days)
+            sub.save(update_fields=["trial_ends_at", "updated_at"])
+            activated += 1
+
+        logger.info("activate_trials_complete", activated=activated)
+
+    except Exception as exc:
+        logger.exception("activate_trials_failed")
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))

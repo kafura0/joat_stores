@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.pagination import StoreCursorPagination
-from core.permissions import IsStoreManager
+from core.permissions import HasPermission, IsStoreManager
 from core.views import TenantViewSet
 
 from apps.product.models import Category, Product, ProductImage, Variant
@@ -125,6 +125,12 @@ class ProductViewSet(TenantViewSet):
         ordering = "name"
 
     pagination_class = _Pagination
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve", "qr"):
+            return [HasStore()]
+        # create, update, partial_update, destroy → store_manager+
+        return [IsStoreManager()]
 
     def get_serializer_class(self):
         if self.action == "retrieve":

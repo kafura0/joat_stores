@@ -77,9 +77,9 @@ services:
       - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
         generateValue: true
 
-# Background workers (Celery + Celery Beat) require Render Starter plan or higher.
-# To enable, uncomment below and change plan: free → plan: starter.
-#
+# Background workers (Celery + Celery Beat) — requires Render Starter plan.
+# Uncomment and change plan: free → plan: starter when ready to deploy.
+
 #  - type: worker
 #    name: joat-stores-celery
 #    env: python

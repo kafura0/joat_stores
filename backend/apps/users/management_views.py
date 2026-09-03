@@ -101,7 +101,7 @@ class UserManagementView(APIView):
                 {"errors": [{"field": "password", "message": "Password must be at least 6 characters.", "code": "MIN_LENGTH"}]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if role not in ("store_manager", "cashier", "waiter"):
+        if role not in ("store_manager", "cashier", "waiter", "kitchen"):
             return Response(
                 {"errors": [{"field": "role", "message": "Invalid role.", "code": "INVALID"}]},
                 status=status.HTTP_400_BAD_REQUEST,
