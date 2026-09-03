@@ -178,3 +178,107 @@ class HasPlanFeature(BasePermission):
             return False  # Unknown feature name — deny (fail safe)
 
         return bool(getattr(plan, flag, False))
+
+
+# ── Permission Matrix ────────────────────────────────────────────────────────
+# Maps role → set of allowed permission codes.
+# Views declare `required_permission = "code"` and HasPermission checks this matrix.
+
+PERMISSION_MATRIX = {
+    "store_owner": {
+        "products.create",
+        "products.edit",
+        "products.delete",
+        "orders.view",
+        "orders.confirm",
+        "orders.cancel",
+        "payments.process",
+        "payments.refund",
+        "payments.refund.approve",
+        "inventory.view",
+        "inventory.adjust",
+        "inventory.count",
+        "staff.create",
+        "staff.edit",
+        "staff.deactivate",
+        "settings.view",
+        "settings.edit",
+        "settings.financial",
+        "reports.view",
+        "reports.export",
+        "happy_hours.create",
+        "happy_hours.edit",
+        "happy_hours.delete",
+        "tabs.view",
+        "tabs.create",
+        "tabs.close",
+        "menu.view",
+        "menu.edit",
+    },
+    "store_manager": {
+        "products.view",
+        "orders.view",
+        "orders.confirm",
+        "payments.process",
+        "inventory.view",
+        "inventory.adjust",
+        "settings.view",
+        "reports.view",
+        "happy_hours.create",
+        "happy_hours.edit",
+        "tabs.view",
+        "tabs.create",
+        "tabs.close",
+        "menu.view",
+        "menu.edit",
+    },
+    "cashier": {
+        "products.view",
+        "orders.view",
+        "payments.process",
+        "tabs.view",
+        "tabs.close",
+    },
+    "waiter": {
+        "products.view",
+        "orders.view",
+        "tabs.view",
+        "tabs.create",
+        "menu.view",
+    },
+    "kitchen": {
+        "orders.view",
+        "menu.view",
+    },
+}
+
+
+class HasPermission(BasePermission):
+    """
+    View-level permission check against the permission matrix.
+
+    Usage:
+        class MyView(APIView):
+            permission_classes = [HasPermission]
+            required_permission = "products.create"
+
+    If required_permission is not set, the view is allowed for any authenticated user.
+    """
+
+    message = "You do not have permission to perform this action."
+
+    def has_permission(self, request, view):
+        required = getattr(view, "required_permission", None)
+        if required is None:
+            return True
+
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Platform admins have all permissions
+        if request.user.role == "platform_admin":
+            return True
+
+        role = request.user.role
+        allowed = PERMISSION_MATRIX.get(role, set())
+        return required in allowed

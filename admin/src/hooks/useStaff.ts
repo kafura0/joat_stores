@@ -43,3 +43,19 @@ export function useUpdateStaff() {
     },
   });
 }
+
+export function useDeactivateStaff() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.patch<{ data: IStaff }>(
+        `/users/${id}/`,
+        { is_active: false }
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+    },
+  });
+}

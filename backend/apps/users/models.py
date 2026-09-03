@@ -105,6 +105,9 @@ class User(AbstractUser):
         PLATFORM_ADMIN = "platform_admin", _("Platform Admin")
         STORE_OWNER = "store_owner", _("Store Owner")
         STORE_MANAGER = "store_manager", _("Store Manager")
+        CASHIER = "cashier", _("Cashier")
+        WAITER = "waiter", _("Waiter")
+        KITCHEN = "kitchen", _("Kitchen Staff")
         CUSTOMER = "customer", _("Customer")
 
     # Email as username (no separate username field)

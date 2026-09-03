@@ -12,6 +12,7 @@ const roleVariant: Record<UserRole, "success" | "warning" | "info" | "default"> 
   store_manager: "info",
   cashier: "warning",
   waiter: "default",
+  kitchen: "info",
 };
 
 export default function PlatformUsersPage() {

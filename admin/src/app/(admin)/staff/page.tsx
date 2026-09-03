@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, UserCog } from "lucide-react";
-import { useStaff, useCreateStaff } from "@/hooks/useStaff";
+import { Plus, UserCog, Pencil, UserX } from "lucide-react";
+import { useStaff, useCreateStaff, useUpdateStaff, useDeactivateStaff } from "@/hooks/useStaff";
 import { DataTable, TableSkeleton } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
@@ -22,10 +22,18 @@ const roleVariant: Record<UserRole, "success" | "warning" | "info" | "default"> 
   store_manager: "info",
   cashier: "warning",
   waiter: "default",
+  kitchen: "info",
   platform_admin: "success",
 };
 
-const schema = z.object({
+const roleOptions = [
+  { value: "cashier", label: "Cashier" },
+  { value: "waiter", label: "Waiter" },
+  { value: "kitchen", label: "Kitchen" },
+  { value: "store_manager", label: "Manager" },
+];
+
+const createSchema = z.object({
   email: z.string().email("Invalid email"),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
@@ -33,33 +41,72 @@ const schema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-type FormData = z.infer<typeof schema>;
+const editSchema = z.object({
+  email: z.string().email("Invalid email"),
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  role: z.string().min(1, "Role is required"),
+});
+
+type CreateFormData = z.infer<typeof createSchema>;
+type EditFormData = z.infer<typeof editSchema>;
 
 export default function StaffPage() {
   const addToast = useUIStore((s) => s.addToast);
-  const [showForm, setShowForm] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editStaff, setEditStaff] = useState<IStaff | null>(null);
+  const [deactivateId, setDeactivateId] = useState<string | null>(null);
 
   const { data: staff, isLoading } = useStaff();
   const createStaff = useCreateStaff();
+  const updateStaff = useUpdateStaff();
+  const deactivateStaff = useDeactivateStaff();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  const createForm = useForm<CreateFormData>({
+    resolver: zodResolver(createSchema),
     defaultValues: { role: "cashier" },
   });
 
-  const onSubmit = async (data: FormData) => {
+  const editForm = useForm<EditFormData>({
+    resolver: zodResolver(editSchema),
+  });
+
+  const handleCreate = async (data: CreateFormData) => {
     await createStaff.mutateAsync({
       ...data,
       role: data.role as UserRole,
     });
     addToast({ type: "success", message: "Staff member added" });
-    reset();
-    setShowForm(false);
+    createForm.reset();
+    setShowCreate(false);
+  };
+
+  const handleEdit = async (data: EditFormData) => {
+    if (!editStaff) return;
+    await updateStaff.mutateAsync({
+      id: editStaff.id,
+      ...data,
+      role: data.role as UserRole,
+    });
+    addToast({ type: "success", message: "Staff member updated" });
+    setEditStaff(null);
+  };
+
+  const handleDeactivate = async () => {
+    if (!deactivateId) return;
+    await deactivateStaff.mutateAsync(deactivateId);
+    addToast({ type: "success", message: "Staff member deactivated" });
+    setDeactivateId(null);
+  };
+
+  const openEdit = (item: IStaff) => {
+    setEditStaff(item);
+    editForm.reset({
+      email: item.email,
+      first_name: item.first_name,
+      last_name: item.last_name,
+      role: item.role,
+    });
   };
 
   return (
@@ -69,7 +116,7 @@ export default function StaffPage() {
           <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Staff</h1>
           <p className="text-sm text-[var(--md-on-surface-variant)]">Manage your team</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowCreate(true)}>
           <Plus size={16} className="mr-2" />
           Add Staff
         </Button>
@@ -84,7 +131,7 @@ export default function StaffPage() {
       </div>
 
       {isLoading ? (
-        <TableSkeleton rows={5} cols={4} />
+        <TableSkeleton rows={5} cols={5} />
       ) : (
         <DataTable
           columns={[
@@ -107,9 +154,33 @@ export default function StaffPage() {
               accessor: (item) => <StatusBadge active={item.is_active} />,
             },
             {
-              header: "Last Login",
-              accessor: (item) =>
-                item.last_login ? formatDateTime(item.last_login) : "\u2014",
+              header: "Actions",
+              accessor: (item) => (
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(item);
+                    }}
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                  {item.is_active && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeactivateId(item.id);
+                      }}
+                    >
+                      <UserX size={14} />
+                    </Button>
+                  )}
+                </div>
+              ),
             },
           ]}
           data={staff?.data ?? []}
@@ -117,51 +188,48 @@ export default function StaffPage() {
         />
       )}
 
+      {/* Create Dialog */}
       <Dialog
-        open={showForm}
-        onClose={() => setShowForm(false)}
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
         title="Add Staff Member"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-4">
           <Input
             label="Email"
             type="email"
-            {...register("email")}
-            error={errors.email?.message}
+            {...createForm.register("email")}
+            error={createForm.formState.errors.email?.message}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="First Name"
-              {...register("first_name")}
-              error={errors.first_name?.message}
+              {...createForm.register("first_name")}
+              error={createForm.formState.errors.first_name?.message}
             />
             <Input
               label="Last Name"
-              {...register("last_name")}
-              error={errors.last_name?.message}
+              {...createForm.register("last_name")}
+              error={createForm.formState.errors.last_name?.message}
             />
           </div>
           <Select
             label="Role"
-            options={[
-              { value: "cashier", label: "Cashier" },
-              { value: "waiter", label: "Waiter" },
-              { value: "store_manager", label: "Manager" },
-            ]}
-            {...register("role")}
-            error={errors.role?.message}
+            options={roleOptions}
+            {...createForm.register("role")}
+            error={createForm.formState.errors.role?.message}
           />
           <Input
             label="Password"
             type="password"
-            {...register("password")}
-            error={errors.password?.message}
+            {...createForm.register("password")}
+            error={createForm.formState.errors.password?.message}
           />
           <div className="flex justify-end gap-2">
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setShowForm(false)}
+              onClick={() => setShowCreate(false)}
             >
               Cancel
             </Button>
@@ -170,6 +238,76 @@ export default function StaffPage() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editStaff}
+        onClose={() => setEditStaff(null)}
+        title="Edit Staff Member"
+      >
+        <form onSubmit={editForm.handleSubmit(handleEdit)} className="space-y-4">
+          <Input
+            label="Email"
+            type="email"
+            {...editForm.register("email")}
+            error={editForm.formState.errors.email?.message}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="First Name"
+              {...editForm.register("first_name")}
+              error={editForm.formState.errors.first_name?.message}
+            />
+            <Input
+              label="Last Name"
+              {...editForm.register("last_name")}
+              error={editForm.formState.errors.last_name?.message}
+            />
+          </div>
+          <Select
+            label="Role"
+            options={roleOptions}
+            {...editForm.register("role")}
+            error={editForm.formState.errors.role?.message}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditStaff(null)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateStaff.isPending}>
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Deactivate Dialog */}
+      <Dialog
+        open={!!deactivateId}
+        onClose={() => setDeactivateId(null)}
+        title="Deactivate Staff Member"
+      >
+        <p className="text-sm text-[var(--md-on-surface-variant)]">
+          Are you sure you want to deactivate this staff member? They will no
+          longer be able to log in.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setDeactivateId(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleDeactivate}
+            disabled={deactivateStaff.isPending}
+          >
+            Deactivate
+          </Button>
+        </div>
       </Dialog>
     </div>
   );

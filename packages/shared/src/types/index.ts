@@ -7,7 +7,8 @@ export type UserRole =
   | "store_owner"
   | "store_manager"
   | "cashier"
-  | "waiter";
+  | "waiter"
+  | "kitchen";
 
 export type OrderStatus =
   | "pending"
