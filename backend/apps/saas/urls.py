@@ -4,6 +4,7 @@ SaaS URL patterns — Epic 9.
 
 from django.urls import path
 
+from apps.saas.platform_metrics import PlatformMetricsView
 from apps.saas.views import (
     PlanDetailView,
     PlanListView,
@@ -26,6 +27,7 @@ urlpatterns = [
 
 # Mounted at /api/v1/platform/ in config/urls.py
 platform_urlpatterns = [
+    path("metrics/", PlatformMetricsView.as_view(), name="platform-metrics"),
     path("subscriptions/", PlatformSubscriptionListView.as_view(), name="platform-subscription-list"),
     path("subscriptions/<int:pk>/", PlatformSubscriptionDetailView.as_view(), name="platform-subscription-detail"),
 ]

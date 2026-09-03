@@ -53,12 +53,13 @@ export interface IJWTPayload {
 // ── Store types ─────────────────────────────────────────────────────────────
 
 export interface IStore {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   domain: string;
   tenant_type: TenantType;
   is_active: boolean;
+  status: "active" | "trial" | "suspended" | "inactive";
   created_at: string;
 }
 
