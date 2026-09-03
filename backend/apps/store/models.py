@@ -98,6 +98,13 @@ class Store(SafeDeleteModel):
     country = models.CharField(max_length=2, default="KE")
     # IANA timezone string (e.g. "Africa/Nairobi")
     timezone = models.CharField(max_length=63, default="Africa/Nairobi")
+    # M-Pesa till/paybill number for C2B payments (customer-initiated)
+    mpesa_shortcode = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Safaricom till/paybill number for C2B customer-initiated payments.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

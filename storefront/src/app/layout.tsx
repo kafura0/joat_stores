@@ -18,6 +18,7 @@ import { headers } from "next/headers";
 import React from "react";
 
 import TenantThemeProvider from "@/components/layout/TenantThemeProvider";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { fetchTenantBranding } from "@/lib/branding";
 import "./globals.css";
 
@@ -52,6 +53,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <TenantThemeProvider>{children}</TenantThemeProvider>
+        <PWAInstallBanner />
       </body>
     </html>
   );

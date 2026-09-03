@@ -121,6 +121,86 @@ class MpesaCallbackView(APIView):
         return Response({"status": "accepted"}, status=200)
 
 
+class C2BCallbackView(APIView):
+    """POST /api/v1/payments/c2b-callback/
+
+    Public webhook endpoint for Daraja C2B (customer-initiated) payments.
+    Customer pays to till number → Safaricom POSTs here → we match to order.
+
+    C2B payload format:
+    {
+        "TransactionType": "Paybill",
+        "TransID": "QHK71G4YS0",
+        "TransTime": "20230930143022",
+        "TransAmount": "1000",
+        "BusinessShortCode": "174379",
+        "BillRefNumber": "ORDER-abc123",
+        "InvoiceNumber": "",
+        "OrgAccountBalance": "12345",
+        "ThirdPartyTransID": "",
+        "MSISDN": "254712345678",
+        "FirstName": "John",
+        "MiddleName": "",
+        "LastName": "Doe"
+    }
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        from apps.payment.tasks import process_c2b_callback
+
+        log.info("c2b_callback_received", data_keys=list(request.data.keys()))
+        process_c2b_callback.delay(request.data)
+        return Response({"status": "accepted"}, status=200)
+
+
+class C2BRegisterView(APIView):
+    """POST /api/v1/payments/c2b-register/
+
+    Register C2B callback URLs with Safaricom for the store's till number.
+    Requires store owner/manager. Only needs to be done once per till.
+    """
+
+    permission_classes = [IsStoreManager]
+
+    def post(self, request):
+        from apps.payment.daraja import get_daraja_client
+        from django.conf import settings
+
+        base_url = f"https://{request.get_host()}"
+        confirmation_url = f"{base_url}/api/v1/payments/c2b-callback/"
+        validation_url = f"{base_url}/api/v1/payments/c2b-validation/"
+
+        try:
+            client = get_daraja_client()
+            result = client.register_c2b_url(confirmation_url, validation_url)
+            return Response({"data": result}, status=200)
+        except Exception as exc:
+            log.error("c2b_register_failed", error=str(exc))
+            return Response(
+                {"errors": [{"code": "C2B_REGISTER_FAILED", "message": str(exc)}]},
+                status=502,
+            )
+
+
+class C2BValidationView(APIView):
+    """POST /api/v1/payments/c2b-validation/
+
+    Pre-validation endpoint for C2B payments. Safaricom calls this first
+    to check if the payment should be accepted. Always returns 200 OK
+    to accept all payments.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        log.info("c2b_validation", data=request.data)
+        return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=200)
+
+
 class ReversePaymentView(APIView):
     """POST /api/v1/payments/{transaction_id}/reverse/
 

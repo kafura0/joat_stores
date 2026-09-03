@@ -58,6 +58,7 @@ LOCK_MAX_WAIT = 10  # seconds — give up waiting, fetch directly
 MPESA_STK_PUSH_PATH = "/mpesa/stkpush/v1/processrequest"
 MPESA_REVERSAL_PATH = "/mpesa/reversal/v1/request"
 MPESA_STK_QUERY_PATH = "/mpesa/stkpushquery/v1/query"
+MPESA_C2B_REGISTER_PATH = "/mpesa/c2b/v1/registerurl"
 
 
 class DarajaClient:
@@ -432,6 +433,58 @@ class DarajaClient:
             "ResultCode": int(response_data.get("ResultCode", "999")),
             "ResultDesc": response_data.get("ResultDesc", ""),
         }
+
+    # ------------------------------------------------------------------
+    # C2B Register URL (till number / paybill)
+    # ------------------------------------------------------------------
+
+    def register_c2b_url(self, confirmation_url: str, validation_url: str) -> dict:
+        """Register C2B callback URLs with Safaricom.
+
+        Once registered, all customer-initiated payments to the till/paybill
+        number will trigger POST to confirmation_url.
+
+        Args:
+            confirmation_url: Full URL for payment confirmation callbacks.
+            validation_url: Full URL for payment validation (optional pre-check).
+
+        Returns:
+            Daraja response dict with ResponseCode, ResponseDescription.
+        """
+        token = self.get_access_token()
+
+        payload = {
+            "ShortCode": self._shortcode,
+            "ResponseType": "Completed",
+            "ConfirmationURL": confirmation_url,
+            "ValidationURL": validation_url,
+        }
+
+        try:
+            response = requests.post(
+                f"{self._base_url}{MPESA_C2B_REGISTER_PATH}",
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                timeout=30,
+            )
+        except requests.exceptions.RequestException as exc:
+            log.error("c2b_register_network_error", error=str(exc))
+            raise StkPushError("Network error during C2B Register URL") from exc
+
+        if response.status_code != 200:
+            log.error(
+                "c2b_register_http_error",
+                status=response.status_code,
+                body=response.text[:200],
+            )
+            raise StkPushError(f"HTTP {response.status_code}")
+
+        response_data = response.json()
+        log.info("c2b_register_success", response=response_data)
+        return response_data
 
 
 def get_daraja_client() -> DarajaClient:
