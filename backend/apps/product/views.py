@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.pagination import StoreCursorPagination
+from core.permissions import IsStoreManager
 from core.views import TenantViewSet
 
 from apps.product.models import Category, Product, ProductImage, Variant
@@ -182,9 +183,95 @@ class VariantViewSet(TenantViewSet):
     queryset = Variant.objects.prefetch_related("images")
 
     class _Pagination(StoreCursorPagination):
-        ordering = "id"
+        ordering = "name"
 
     pagination_class = _Pagination
+
+
+class ProductImportView(APIView):
+    """
+    POST /api/v1/store/products/import/
+
+    Bulk import products from CSV.
+    Expected CSV columns: name, price, category, stock, sku, description
+    """
+
+    permission_classes = [IsStoreManager]
+
+    def post(self, request):
+        import csv
+        import io
+
+        csv_file = request.FILES.get("file")
+        if not csv_file:
+            return Response(
+                {"errors": [{"code": "NO_FILE", "message": "No file provided"}]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            decoded = csv_file.read().decode("utf-8")
+            reader = csv.DictReader(io.StringIO(decoded))
+        except Exception:
+            return Response(
+                {"errors": [{"code": "INVALID_CSV", "message": "Invalid CSV format"}]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created = 0
+        errors = []
+
+        for i, row in enumerate(reader, start=2):
+            name = row.get("name", "").strip()
+            if not name:
+                errors.append({"row": i, "error": "Name is required"})
+                continue
+
+            try:
+                price = float(row.get("price", 0))
+            except (ValueError, TypeError):
+                errors.append({"row": i, "error": "Invalid price"})
+                continue
+
+            # Find or create category
+            category = None
+            category_name = row.get("category", "").strip()
+            if category_name:
+                category, _ = Category.objects.get_or_create(
+                    store=request.store,
+                    name=category_name,
+                    defaults={"position": Category.objects.filter(store=request.store).count()},
+                )
+
+            # Create product
+            product = Product.objects.create(
+                store=request.store,
+                name=name,
+                description=row.get("description", "").strip(),
+                category=category,
+                is_available=True,
+            )
+
+            # Create default variant with price
+            Variant.objects.create(
+                store=request.store,
+                product=product,
+                attribute_values={"size": "default"},
+                price=price,
+                inventory_count=int(row.get("stock", 0)),
+                sku=row.get("sku", "").strip(),
+                is_available=True,
+            )
+
+            created += 1
+
+        return Response({
+            "data": {
+                "created": created,
+                "errors": errors,
+                "total_rows": created + len(errors),
+            }
+        })
 
     def get_queryset(self):
         qs = super().get_queryset()

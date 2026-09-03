@@ -69,3 +69,22 @@ export function useDeleteProduct() {
     },
   });
 }
+
+export function useImportProducts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post<{ data: { created: number; errors: Array<{ row: number; error: string }>; total_rows: number } }>(
+        "/products/import/",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}

@@ -227,3 +227,24 @@ class BrandingSerializer(serializers.Serializer):
             "url": "https://joat.com",
             "logo_url": "https://joat.com/static/logo-small.svg",
         }
+
+
+class StoreSettingsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for StoreSettings — allows store owner/manager to view and update settings.
+    """
+
+    class Meta:
+        model = StoreSettings
+        fields = [
+            "id",
+            "tagline",
+            "logo_url",
+            "low_stock_threshold",
+            "tax_rate",
+            "tax_inclusive",
+            "currency_symbol",
+            "receipt_header",
+            "receipt_footer",
+        ]
+        read_only_fields = ["id"]

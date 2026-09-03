@@ -16,11 +16,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.store.models import Store, StoreTheme
+from apps.store.models import Store, StoreSettings, StoreTheme
 from apps.store.serializers import (
     BrandingSerializer,
     StoreDetailSerializer,
     StoreProvisionSerializer,
+    StoreSettingsSerializer,
     StoreStatusSerializer,
     ThemeSerializer,
 )
@@ -279,3 +280,26 @@ class ApplyPresetView(APIView):
         theme, _ = StoreTheme.objects.get_or_create(store=request.store)
         apply_preset(theme, slug)
         return Response({"data": ThemeSerializer(theme).data})
+
+
+class StoreSettingsView(APIView):
+    """
+    GET    /api/v1/store/settings/ — current store settings
+    PATCH  /api/v1/store/settings/ — partial update of store settings
+    """
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [HasStore()]
+        return [IsStoreManager()]
+
+    def get(self, request):
+        settings, _ = StoreSettings.objects.get_or_create(store=request.store)
+        return Response({"data": StoreSettingsSerializer(settings).data})
+
+    def patch(self, request):
+        settings, _ = StoreSettings.objects.get_or_create(store=request.store)
+        serializer = StoreSettingsSerializer(settings, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"data": serializer.data})

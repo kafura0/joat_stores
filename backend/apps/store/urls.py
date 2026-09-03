@@ -21,6 +21,7 @@ from apps.store.views import (
     PresetListView,
     StoreListView,
     StoreProvisionView,
+    StoreSettingsView,
     StoreStatusUpdateView,
     ThemeDetailView,
 )
@@ -74,6 +75,12 @@ storefront_urlpatterns = [
         "themes/apply-preset/",
         ApplyPresetView.as_view(),
         name="theme-apply-preset",
+    ),
+    # Store settings (Story 6.1)
+    path(
+        "settings/",
+        StoreSettingsView.as_view(),
+        name="store-settings",
     ),
 ]
 

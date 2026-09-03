@@ -153,6 +153,7 @@ class StoreSettings(TenantModel):
 
     Story 1.7 adds: tagline, logo_url.
     Story 4.1 adds: low_stock_threshold.
+    Story 6.1 adds: tax_rate, tax_inclusive, currency_symbol, receipt_header, receipt_footer.
     """
 
     tagline = models.CharField(
@@ -169,6 +170,31 @@ class StoreSettings(TenantModel):
     low_stock_threshold = models.IntegerField(
         default=5,
         help_text="Variant inventory_count at or below which a low-stock alert fires.",
+    )
+    tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=0.1600,
+        help_text="Tax rate as decimal (e.g., 0.1600 for 16% VAT).",
+    )
+    tax_inclusive = models.BooleanField(
+        default=True,
+        help_text="If True, prices include tax. If False, tax is added on top.",
+    )
+    currency_symbol = models.CharField(
+        max_length=10,
+        default="KES",
+        help_text="Currency symbol displayed in the admin and storefront.",
+    )
+    receipt_header = models.TextField(
+        blank=True,
+        default="",
+        help_text="Text shown at the top of receipts.",
+    )
+    receipt_footer = models.TextField(
+        blank=True,
+        default="",
+        help_text="Text shown at the bottom of receipts.",
     )
 
     class Meta:

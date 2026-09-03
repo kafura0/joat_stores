@@ -22,7 +22,7 @@ You are building a multi-tenant SaaS e-commerce platform called **JOAT Stores** 
 
 ## Architecture
 
-```
+``` 
 admin/src/
 ├── app/
 │   ├── (admin)/                    # Store owner / manager views
