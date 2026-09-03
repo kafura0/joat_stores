@@ -17,10 +17,10 @@ export function RecentOrders() {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border bg-white p-6">
-        <div className="mb-4 h-5 w-32 animate-pulse rounded bg-gray-200" />
+      <div className="glass-panel rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-6 backdrop-blur-md">
+        <div className="mb-4 h-5 w-32 animate-pulse rounded bg-[var(--md-surface-variant)]" />
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="mb-3 h-10 animate-pulse rounded bg-gray-100" />
+          <div key={i} className="mb-3 h-10 animate-pulse rounded bg-[var(--md-surface-variant)]" />
         ))}
       </div>
     );
@@ -29,31 +29,31 @@ export function RecentOrders() {
   const orders = stats?.recent_orders ?? [];
 
   return (
-    <div className="rounded-lg border bg-white p-6">
+    <div className="glass-panel rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-6 backdrop-blur-md">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">Recent Orders</h3>
-        <Link href="/orders/" className="text-sm text-blue-600 hover:underline">
+        <h3 className="font-semibold text-[var(--md-on-surface)]">Recent Orders</h3>
+        <Link href="/orders/" className="text-sm text-[var(--md-tertiary)] hover:underline">
           View all
         </Link>
       </div>
       {orders.length === 0 ? (
-        <p className="py-8 text-center text-sm text-gray-500">No orders yet</p>
+        <p className="py-8 text-center text-sm text-[var(--md-on-surface-variant)]">No orders yet</p>
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
             <Link
               key={order.id}
               href={`/orders/${order.id}/`}
-              className="flex items-center justify-between rounded-lg border p-3 transition hover:bg-gray-50"
+              className="flex items-center justify-between rounded-xl border border-[var(--md-outline-variant)] p-3 transition-all duration-200 hover:bg-[var(--md-surface-variant)] hover:shadow-[var(--shadow-subtle)]"
             >
               <div>
-                <p className="font-medium">#{order.order_reference}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-[var(--md-on-surface)]">#{order.order_reference}</p>
+                <p className="text-sm text-[var(--md-on-surface-variant)]">
                   {formatTime(order.created_at)} &middot; {order.items?.length ?? 0} items
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-semibold">{formatCurrency(order.total)}</p>
+                <p className="font-semibold text-[var(--md-on-surface)]">{formatCurrency(order.total)}</p>
                 <Badge variant={statusVariant[order.status] ?? "default"}>
                   {order.status}
                 </Badge>

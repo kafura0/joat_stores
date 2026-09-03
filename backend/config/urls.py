@@ -14,6 +14,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from apps.analytics.urls import platform_urlpatterns as analytics_platform_urlpatterns
 from apps.saas.urls import platform_urlpatterns as saas_platform_urlpatterns
 from apps.store.urls import storefront_urlpatterns
+from apps.users.management_views import UserDetailView, UserManagementView
 from core.worker_health import WorkerHealthView
 
 
@@ -37,6 +38,9 @@ urlpatterns = [
     path("api/v1/platform/stores/", include("apps.store.urls")),  # Story 1.4
     path("api/v1/store/", include((storefront_urlpatterns, "store-public"))),  # Story 1.7
     path("api/v1/auth/", include("apps.users.urls")),           # Story 1.5
+    # User management — staff CRUD for store owners/managers
+    path("api/v1/users/", UserManagementView.as_view(), name="user-management"),
+    path("api/v1/users/<uuid:user_id>/", UserDetailView.as_view(), name="user-detail"),
     path("api/v1/store/", include("apps.product.urls")),      # Epic 4 — product catalog
     path("api/v1/store/", include("apps.order.urls")),        # Epic 4 — cart + checkout + orders
     path("api/v1/payments/", include("apps.payment.urls", namespace="payment")),  # Epic 2

@@ -96,16 +96,26 @@ export default function AdminSidebar({
 
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-gray-900 text-white transition-transform duration-200",
+          "fixed inset-y-0 left-0 z-30 flex flex-col transition-transform duration-200",
+          "w-[280px] bg-[var(--md-surface)] border-r border-[var(--md-outline-variant)]",
           "md:static md:translate-x-0 md:flex-shrink-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
         aria-label="Sidebar navigation"
       >
-        <div className="flex h-16 items-center border-b border-gray-700 px-5">
-          <span className="text-lg font-bold tracking-tight">joat stores</span>
+        {/* Brand header — gradient text like template */}
+        <div className="flex h-16 items-center border-b border-[var(--md-outline-variant)] px-6">
+          <div className="flex flex-col">
+            <span className="text-lg font-bold bg-gradient-to-r from-[var(--md-primary)] to-[var(--md-tertiary)] bg-clip-text text-transparent">
+              joat stores
+            </span>
+            <span className="text-xs text-[var(--md-on-surface-variant)]">
+              {role === "platform_admin" ? "Platform Admin" : "Store Dashboard"}
+            </span>
+          </div>
         </div>
 
+        {/* Navigation — glassmorphism hover effects */}
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             {navItems.map((item) => {
@@ -125,10 +135,10 @@ export default function AdminSidebar({
                     href={item.href}
                     onClick={onClose}
                     className={[
-                      "flex min-h-[48px] items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
+                      "flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
                       isActive
-                        ? "bg-gray-700 text-white"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white",
+                        ? "bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] shadow-[var(--shadow-subtle)]"
+                        : "text-[var(--md-on-surface-variant)] hover:bg-[var(--glass-bg)] hover:backdrop-blur-md hover:text-[var(--md-on-surface)] hover:shadow-[var(--shadow-subtle)]",
                     ].join(" ")}
                   >
                     <item.icon size={20} />
@@ -139,6 +149,23 @@ export default function AdminSidebar({
             })}
           </ul>
         </nav>
+
+        {/* User profile footer */}
+        <div className="border-t border-[var(--md-outline-variant)] p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] text-sm font-bold">
+              A
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-[var(--md-on-surface)] truncate">
+                Store Admin
+              </span>
+              <span className="text-xs text-[var(--md-on-surface-variant)] truncate">
+                admin@joat.com
+              </span>
+            </div>
+          </div>
+        </div>
       </aside>
     </>
   );

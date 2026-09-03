@@ -45,8 +45,8 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-sm text-gray-500">Manage your product catalog</p>
+          <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">Products</h1>
+          <p className="text-sm text-[var(--md-on-surface-variant)]">Manage your product catalog</p>
         </div>
         <Button onClick={() => router.push("/products/new/")}>
           <Plus size={16} className="mr-2" />
@@ -56,9 +56,9 @@ export default function ProductsPage() {
 
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--md-on-surface-variant)]" />
           <Input
-            placeholder="Search products..."
+            placeholder="Search products, SKUs..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -140,7 +140,7 @@ export default function ProductsPage() {
         onClose={() => setDeleteId(null)}
         title="Delete Product"
       >
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-[var(--md-on-surface-variant)]">
           Are you sure you want to delete this product? This action cannot be
           undone.
         </p>
