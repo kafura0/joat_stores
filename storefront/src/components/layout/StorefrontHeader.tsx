@@ -2,13 +2,14 @@
  * StorefrontHeader — persistent store header.
  *
  * Server Component — no client JS for above-fold content (AC6: <200KB payload).
- * Cart icon is a placeholder link; full cart functionality added in Story 4.2.
+ * Cart icon is a client component that reads from Zustand cart store.
  *
  * Implementation: Story 1.7
  */
 
 import Link from "next/link";
 
+import CartIcon from "@/components/CartIcon";
 import type { BrandingData } from "@/types/branding";
 
 interface StorefrontHeaderProps {
@@ -51,31 +52,8 @@ export default function StorefrontHeader({ branding }: StorefrontHeaderProps) {
           </span>
         </Link>
 
-        {/* Cart icon — placeholder, wired in Story 4.2 */}
-        <Link
-          href="/cart"
-          aria-label="View cart"
-          className="relative rounded-md p-2 transition-colors hover:bg-gray-100"
-        >
-          {/* Inline SVG — no icon library import (AC6: bundle size) */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            style={{ color: "var(--color-primary)" }}
-          >
-            <circle cx="9" cy="21" r="1" />
-            <circle cx="20" cy="21" r="1" />
-            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-          </svg>
-        </Link>
+        {/* Cart icon with badge */}
+        <CartIcon />
       </div>
     </header>
   );

@@ -105,3 +105,32 @@ Need help? Reply to this email or visit our documentation.
             owner_email=owner_email,
         )
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+
+
+@shared_task(queue="analytics.reports")
+def warm_branding_cache():
+    """Pre-warm Redis cache for all active store branding endpoints.
+
+    Runs every hour. Fetches branding for each active store and caches
+    the response so the storefront SSR doesn't hit the DB on every page load.
+    """
+    import structlog
+    from django.core.cache import cache
+    from apps.store.models import Store, StoreSettings, StoreTheme
+    from apps.store.serializers import BrandingSerializer
+
+    log = structlog.get_logger(__name__)
+
+    stores = Store.objects.filter(status="active")
+    warmed = 0
+
+    for store in stores:
+        cache_key = f"branding:{store.id}"
+        try:
+            serializer = BrandingSerializer(store)
+            cache.set(cache_key, serializer.data, timeout=3600)  # 1 hour
+            warmed += 1
+        except Exception:
+            log.warning("branding_cache_warm_failed", store_id=str(store.id))
+
+    log.info("branding_cache_warm_complete", stores=warmed)

@@ -83,12 +83,27 @@ class Order(TenantModel):
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Coupon / discount
+    coupon_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Applied coupon code (denormalized for reporting).",
+    )
+    discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Total discount applied from coupon.",
+    )
 
     class Meta:
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["store", "status"], name="idx_order_store_status"),
             models.Index(fields=["store", "customer_phone"], name="idx_order_store_phone"),
+            models.Index(fields=["store", "created_at"], name="idx_order_store_date"),
         ]
 
     def __str__(self):

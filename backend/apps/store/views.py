@@ -303,3 +303,87 @@ class StoreSettingsView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"data": serializer.data})
+
+
+class StoreLogoUploadView(APIView):
+    """
+    POST /api/v1/store/settings/logo/ — upload store logo
+
+    Accepts multipart/form-data with 'image' file field.
+    Compresses to WebP <= 500KB, saves to MEDIA_ROOT/logos/,
+    and updates StoreSettings.logo_url with the served URL.
+    """
+
+    permission_classes = [IsStoreManager]
+
+    def post(self, request):
+        uploaded = request.FILES.get("image")
+        if not uploaded:
+            return Response(
+                {"errors": [{"code": "NO_FILE", "message": "No image file provided."}]},
+                status=400,
+            )
+
+        # Validate file type
+        allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+        if uploaded.content_type not in allowed:
+            return Response(
+                {"errors": [{"code": "INVALID_TYPE", "message": "Upload a JPEG, PNG, WebP, or GIF image."}]},
+                status=400,
+            )
+
+        # Validate file size (max 5MB)
+        if uploaded.size > 5 * 1024 * 1024:
+            return Response(
+                {"errors": [{"code": "FILE_TOO_LARGE", "message": "Image must be under 5MB."}]},
+                status=400,
+            )
+
+        try:
+            from PIL import Image
+            import io
+
+            img = Image.open(uploaded)
+            img = img.convert("RGBA") if img.mode == "RGBA" else img.convert("RGB")
+
+            # Resize to max 400x400 for logos
+            img.thumbnail((400, 400), Image.Resampling.LANCZOS)
+
+            buf = io.BytesIO()
+            img.save(buf, format="WEBP", quality=85)
+            buf.seek(0)
+
+            # Save to MEDIA_ROOT/logos/
+            import os
+            from django.conf import settings
+
+            logo_dir = os.path.join(settings.MEDIA_ROOT, "logos")
+            os.makedirs(logo_dir, exist_ok=True)
+
+            filename = f"{request.store.id}_logo.webp"
+            filepath = os.path.join(logo_dir, filename)
+
+            with open(filepath, "wb") as f:
+                f.write(buf.read())
+
+            # Build URL
+            logo_url = f"{settings.MEDIA_URL}logos/{filename}"
+
+            # Update store settings
+            store_settings, _ = StoreSettings.objects.get_or_create(store=request.store)
+            store_settings.logo_url = logo_url
+            store_settings.save(update_fields=["logo_url"])
+
+            return Response({
+                "logo_url": logo_url,
+                "message": "Logo uploaded successfully.",
+            })
+
+        except Exception as e:
+            import structlog
+            log = structlog.get_logger(__name__)
+            log.exception("logo_upload_failed", store_id=str(request.store.id))
+            return Response(
+                {"errors": [{"code": "UPLOAD_FAILED", "message": "Failed to process image."}]},
+                status=500,
+            )

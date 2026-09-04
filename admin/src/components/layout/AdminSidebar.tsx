@@ -14,6 +14,8 @@ import {
   BarChart3,
   Settings,
   Store,
+  Ticket,
+  Star,
 } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 
@@ -31,6 +33,8 @@ const STORE_OWNER_NAV: NavItem[] = [
   { label: "Inventory", href: "/inventory/", icon: Box },
   { label: "Orders", href: "/orders/", icon: Receipt },
   { label: "Customers", href: "/customers/", icon: Users },
+  { label: "Coupons", href: "/coupons/", icon: Ticket },
+  { label: "Loyalty", href: "/loyalty/", icon: Star },
   { label: "Staff", href: "/staff/", icon: UserCog },
   { label: "Reports", href: "/reports/", icon: BarChart3 },
   { label: "Settings", href: "/settings/", icon: Settings },

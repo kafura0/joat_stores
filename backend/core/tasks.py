@@ -111,3 +111,16 @@ def _publish_to_dlq(task_name: str, task_id: str, args, kwargs, error: str) -> N
         redis_client.zremrangebyrank("celery:dlq", 0, -10001)
     except Exception:
         pass  # DLQ publish failure is non-fatal
+
+
+# ---------------------------------------------------------------------------
+# System tasks
+# ---------------------------------------------------------------------------
+
+
+@shared_task(queue="analytics.reports")
+def heartbeat():
+    """Simple heartbeat task — runs every 5 min to verify Celery workers are alive."""
+    import structlog
+    logger = structlog.get_logger(__name__)
+    logger.info("heartbeat_ok")

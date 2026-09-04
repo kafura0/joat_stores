@@ -147,6 +147,24 @@ class CheckoutView(APIView):
         data = ser.validated_data
         cart_ref = data["cart_ref"]
 
+        # Subscription limit check
+        from apps.saas.models import PlanLimitExceeded, check_monthly_order_limit
+
+        try:
+            check_monthly_order_limit(request.store)
+        except PlanLimitExceeded as exc:
+            return Response(
+                {
+                    "errors": [{
+                        "code": "PLAN_LIMIT_EXCEEDED",
+                        "limit_type": exc.limit_type,
+                        "max": exc.max_value,
+                        "message": f"Your plan allows a maximum of {exc.max_value} orders per month. Upgrade to accept more orders.",
+                    }]
+                },
+                status=403,
+            )
+
         # Load cart
         items = cart_service.get_cart(str(request.store.id), cart_ref)
         if not items:
@@ -193,6 +211,41 @@ class CheckoutView(APIView):
                 status=409,
             )
 
+        # Validate and apply coupon
+        coupon_code = data.get("coupon_code", "")
+        discount_amount = Decimal("0.00")
+        coupon_obj = None
+
+        if coupon_code:
+            from apps.order.coupons import Coupon
+
+            try:
+                coupon_obj = Coupon.objects.get(
+                    store=request.store,
+                    code__iexact=coupon_code,
+                )
+            except Coupon.DoesNotExist:
+                return Response(
+                    {"errors": [{"code": "COUPON_NOT_FOUND", "message": "Invalid coupon code."}]},
+                    status=400,
+                )
+
+            if not coupon_obj.is_valid:
+                return Response(
+                    {"errors": [{"code": "COUPON_INVALID", "message": "This coupon is no longer valid."}]},
+                    status=400,
+                )
+
+            discount_amount = coupon_obj.calculate_discount(total_amount)
+
+            if discount_amount <= 0:
+                return Response(
+                    {"errors": [{"code": "COUPON_NOT_APPLICABLE", "message": "Coupon does not apply to this order."}]},
+                    status=400,
+                )
+
+            total_amount -= discount_amount
+
         from django.db import transaction as db_tx
 
         with db_tx.atomic():
@@ -208,10 +261,16 @@ class CheckoutView(APIView):
                 delivery_address=data.get("delivery_address"),
                 items_snapshot=items_snapshot,
                 total_amount=total_amount,
+                coupon_code=coupon_code,
+                discount_amount=discount_amount,
                 customer=request.user if request.user.is_authenticated else None,
             )
             snapshot.linked_order = order
             snapshot.save(update_fields=["linked_order"])
+
+            # Record coupon use
+            if coupon_obj:
+                coupon_obj.record_use()
 
         # Decrement inventory atomically
         from django.db.models import F
@@ -275,7 +334,7 @@ class OrderDetailView(APIView):
 
     def get(self, request, order_id):
         try:
-            order = Order.objects.get(id=order_id, store=request.store)
+            order = Order.objects.select_related("payment_transaction").get(id=order_id, store=request.store)
         except Order.DoesNotExist:
             return Response(status=404)
         return Response(OrderSerializer(order).data)
@@ -416,7 +475,7 @@ class MerchantDashboardView(APIView):
         ).count()
 
         # Recent orders
-        recent_orders = Order.objects.filter(
+        recent_orders = Order.objects.select_related("payment_transaction").filter(
             store=request.store,
         ).order_by("-created_at")[:10]
 

@@ -113,6 +113,9 @@ class Store(SafeDeleteModel):
     class Meta:
         db_table = "store_store"
         ordering = ["name"]
+        indexes = [
+            models.Index(fields=["status"], name="idx_store_status"),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.domain})"

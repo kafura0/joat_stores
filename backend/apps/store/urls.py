@@ -20,6 +20,7 @@ from apps.store.views import (
     OfflineInventorySnapshotView,
     PresetListView,
     StoreListView,
+    StoreLogoUploadView,
     StoreProvisionView,
     StoreSettingsView,
     StoreStatusUpdateView,
@@ -81,6 +82,11 @@ storefront_urlpatterns = [
         "settings/",
         StoreSettingsView.as_view(),
         name="store-settings",
+    ),
+    path(
+        "settings/logo/",
+        StoreLogoUploadView.as_view(),
+        name="store-logo-upload",
     ),
 ]
 

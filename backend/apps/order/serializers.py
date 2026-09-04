@@ -39,6 +39,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "delivery_address",
             "items_snapshot",
             "total_amount",
+            "coupon_code",
+            "discount_amount",
             "status",
             "payment_transaction",
             "confirmed_at",
@@ -58,3 +60,4 @@ class CheckoutInputSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, default="")
     delivery_address = serializers.JSONField(required=False, default=None)
     cart_ref = serializers.CharField(max_length=255)
+    coupon_code = serializers.CharField(max_length=50, required=False, default="")

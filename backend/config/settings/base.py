@@ -330,6 +330,21 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.saas.tasks.activate_trial_subscriptions",
         "schedule": crontab(hour=0, minute=15),  # daily at 00:15
     },
+    # Inventory alerts (low stock)
+    "check-low-stock": {
+        "task": "apps.inventory.tasks.check_low_stock",
+        "schedule": crontab(minute=15),  # every hour at :15
+    },
+    # Health check — ping heartbeat
+    "heartbeat": {
+        "task": "core.tasks.heartbeat",
+        "schedule": timedelta(minutes=5),  # every 5 minutes
+    },
+    # Cache warming — refresh hot endpoints
+    "warm-branding-cache": {
+        "task": "apps.store.tasks.warm_branding_cache",
+        "schedule": crontab(minute=0),  # every hour on the hour
+    },
 }
 
 # ---------------------------------------------------------------------------

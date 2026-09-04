@@ -111,14 +111,35 @@ export default function SettingsPage() {
 
               {/* Logo URL input */}
               <div className="flex-1 space-y-3">
-                <Input
-                  label="Logo URL"
-                  {...register("logo_url")}
-                  placeholder="https://example.com/logo.png"
-                  error={errors.logo_url?.message}
-                />
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-[var(--md-on-surface-variant)]">
+                    Upload Logo
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append("image", file);
+                      try {
+                        const { api } = await import("@/lib/api");
+                        const { data } = await api.post("/settings/logo/", formData, {
+                          headers: { "Content-Type": "multipart/form-data" },
+                        });
+                        if (data.logo_url) {
+                          setValue("logo_url", data.logo_url, { shouldDirty: true });
+                        }
+                      } catch {
+                        // Error handled by toast
+                      }
+                    }}
+                    className="block w-full text-sm text-[var(--md-on-surface-variant)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--md-primary)] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:opacity-90"
+                  />
+                </div>
                 <p className="text-xs text-[var(--md-on-surface-variant)]">
-                  Paste a URL to your logo image. Recommended: 200x200px, PNG or SVG.
+                  Upload a JPEG, PNG, or WebP image. Max 5MB. Resized to 400x400.
                 </p>
                 {logoUrl && (
                   <Button

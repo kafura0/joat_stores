@@ -54,7 +54,7 @@ class TabListView(APIView):
     permission_classes = [IsStoreManager]
 
     def get(self, request):
-        tabs = Tab.objects.filter(store=request.store).order_by("-opened_at")
+        tabs = Tab.objects.filter(store=request.store).select_related("customer").prefetch_related("items").order_by("-opened_at")
         return Response(TabSerializer(tabs, many=True).data)
 
     def post(self, request):
@@ -76,7 +76,7 @@ class TabDetailView(APIView):
 
     def get(self, request, tab_id):
         try:
-            tab = Tab.objects.get(id=tab_id, store=request.store)
+            tab = Tab.objects.select_related("customer").prefetch_related("rounds__items").get(id=tab_id, store=request.store)
         except Tab.DoesNotExist:
             return Response(status=404)
         return Response(TabDetailSerializer(tab).data)
@@ -112,8 +112,14 @@ class AddRoundView(APIView):
         data = serializer.validated_data
         customer_phone = data.get("customer_phone", "")
 
-        # Resolve MenuItems
+        # Batch-fetch MenuItems (single query instead of N)
         from apps.restaurant.models import MenuItem
+
+        item_ids = [item_data["menu_item_id"] for item_data in data["items"]]
+        menu_items = {
+            str(mi.id): mi
+            for mi in MenuItem.objects.filter(id__in=item_ids, store=request.store)
+        }
 
         item_defs = []
         for item_data in data["items"]:
@@ -121,9 +127,8 @@ class AddRoundView(APIView):
             quantity = int(item_data.get("quantity", 1))
             acknowledge_age = item_data.get("acknowledge_age_restriction", False)
 
-            try:
-                menu_item = MenuItem.objects.get(id=menu_item_id, store=request.store)
-            except MenuItem.DoesNotExist:
+            menu_item = menu_items.get(str(menu_item_id))
+            if menu_item is None:
                 return Response(
                     {"code": "MENU_ITEM_NOT_FOUND", "menu_item_id": str(menu_item_id)},
                     status=404,

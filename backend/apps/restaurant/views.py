@@ -608,6 +608,17 @@ class TakeawayOrderView(APIView):
                 "modifiers": [{"modifier_id": str(m.id), "name": m.name, "price_addition": str(m.price_addition)} for m in selected_modifiers],
             })
 
+        # Subscription limit check
+        from apps.saas.models import PlanLimitExceeded, check_monthly_order_limit
+
+        try:
+            check_monthly_order_limit(store)
+        except PlanLimitExceeded as exc:
+            return Response(
+                {"errors": [{"code": "PLAN_LIMIT_EXCEEDED", "message": f"Your plan allows a maximum of {exc.max_value} orders per month."}]},
+                status=403,
+            )
+
         from django.db import transaction as db_transaction
 
         with db_transaction.atomic():
@@ -725,6 +736,17 @@ class DineInOrderView(APIView):
             return Response(
                 {"errors": [{"code": "SESSION_NOT_FOUND", "message": "No OPEN session found for this store with that ID."}]},
                 status=404,
+            )
+
+        # Subscription limit check
+        from apps.saas.models import PlanLimitExceeded, check_monthly_order_limit
+
+        try:
+            check_monthly_order_limit(store)
+        except PlanLimitExceeded as exc:
+            return Response(
+                {"errors": [{"code": "PLAN_LIMIT_EXCEEDED", "message": f"Your plan allows a maximum of {exc.max_value} orders per month."}]},
+                status=403,
             )
 
         # Collect all requested item + modifier IDs
@@ -1010,6 +1032,17 @@ class PendingOrderCreateView(APIView):
                 "contains_allergens": mi.contains_allergens,
                 "modifiers": [{"modifier_id": str(m.id), "name": m.name, "price_addition": str(m.price_addition)} for m in selected_modifiers],
             })
+
+        # Subscription limit check
+        from apps.saas.models import PlanLimitExceeded, check_monthly_order_limit
+
+        try:
+            check_monthly_order_limit(store)
+        except PlanLimitExceeded as exc:
+            return Response(
+                {"errors": [{"code": "PLAN_LIMIT_EXCEEDED", "message": f"Your plan allows a maximum of {exc.max_value} orders per month."}]},
+                status=403,
+            )
 
         order = PendingOrder.objects.create(
             store=store,

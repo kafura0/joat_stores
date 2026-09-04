@@ -160,6 +160,9 @@ class User(AbstractUser):
                 name="uq_platform_admin_email",
             ),
         ]
+        indexes = [
+            models.Index(fields=["store", "role"], name="idx_user_store_role"),
+        ]
 
     def __str__(self) -> str:
         return self.email

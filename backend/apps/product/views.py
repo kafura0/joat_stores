@@ -143,6 +143,24 @@ class ProductViewSet(TenantViewSet):
             qs = qs.filter(is_available=True)
         return qs
 
+    def perform_create(self, serializer):
+        from apps.saas.models import PlanLimitExceeded, check_product_limit
+
+        try:
+            check_product_limit(self.request.store)
+        except PlanLimitExceeded as exc:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied(
+                detail={
+                    "code": "PLAN_LIMIT_EXCEEDED",
+                    "limit_type": exc.limit_type,
+                    "max": exc.max_value,
+                    "message": f"Your plan allows a maximum of {exc.max_value} {exc.limit_type}. Upgrade to add more.",
+                }
+            )
+        serializer.save(store=self.request.store)
+
     @action(detail=True, methods=["get"], url_path="qr")
     def qr(self, request, pk=None):
         """
@@ -227,6 +245,27 @@ class ProductImportView(APIView):
         created = 0
         errors = []
 
+        # Subscription limit check
+        from apps.saas.models import PlanLimitExceeded, check_product_limit
+
+        try:
+            check_product_limit(request.store)
+        except PlanLimitExceeded as exc:
+            return Response(
+                {
+                    "errors": [{
+                        "code": "PLAN_LIMIT_EXCEEDED",
+                        "limit_type": exc.limit_type,
+                        "max": exc.max_value,
+                        "message": f"Your plan allows a maximum of {exc.max_value} {exc.limit_type}. Upgrade to import more products.",
+                    }]
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Pre-compute category position (single query, not per-row)
+        category_position = Category.objects.filter(store=request.store).count()
+
         for i, row in enumerate(reader, start=2):
             name = row.get("name", "").strip()
             if not name:
@@ -243,11 +282,13 @@ class ProductImportView(APIView):
             category = None
             category_name = row.get("category", "").strip()
             if category_name:
-                category, _ = Category.objects.get_or_create(
+                category, created_cat = Category.objects.get_or_create(
                     store=request.store,
                     name=category_name,
-                    defaults={"position": Category.objects.filter(store=request.store).count()},
+                    defaults={"position": category_position},
                 )
+                if created_cat:
+                    category_position += 1
 
             # Create product
             product = Product.objects.create(

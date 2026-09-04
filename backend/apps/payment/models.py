@@ -45,6 +45,18 @@ class MpesaTransaction(TenantModel):
                 fields=["store", "reference"],
                 name="payment_mpesa_store_ref_idx",
             ),
+            models.Index(
+                fields=["checkout_request_id"],
+                name="payment_mpesa_checkout_idx",
+            ),
+            models.Index(
+                fields=["store", "status"],
+                name="payment_mpesa_store_status_idx",
+            ),
+            models.Index(
+                fields=["store", "initiated_at"],
+                name="payment_mpesa_store_date_idx",
+            ),
         ]
 
     def __str__(self):

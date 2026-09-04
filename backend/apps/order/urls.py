@@ -1,10 +1,15 @@
 """
-Order app URL configuration — Stories 4.2, 4.3, 4.4, 4.8.
+Order app URL configuration — Stories 4.2, 4.3, 4.4, 4.5, 4.8.
 Mounted at /api/v1/store/ in config/urls.py.
 """
 
 from django.urls import path
 
+from apps.order.coupon_views import (
+    CouponDetailView,
+    CouponListView,
+    CouponValidateView,
+)
 from apps.order.merchant_views import (
     CustomerDetailView,
     CustomerListView,
@@ -28,6 +33,10 @@ urlpatterns = [
     path("cart/merge/", CartMergeView.as_view(), name="cart-merge"),
     # Checkout — Story 4.4
     path("checkout/", CheckoutView.as_view(), name="checkout"),
+    # Coupons — Story 4.5
+    path("coupons/", CouponListView.as_view(), name="coupon-list"),
+    path("coupons/validate/", CouponValidateView.as_view(), name="coupon-validate"),
+    path("coupons/<uuid:coupon_id>/", CouponDetailView.as_view(), name="coupon-detail"),
     # Order management — Story 4.3
     path("orders/", OrderListView.as_view(), name="order-list"),
     path("orders/<uuid:order_id>/", OrderDetailView.as_view(), name="order-detail"),
