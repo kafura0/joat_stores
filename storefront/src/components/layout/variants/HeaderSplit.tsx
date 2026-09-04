@@ -37,7 +37,7 @@ export default function HeaderSplit({ branding }: Props) {
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
-          {["Menu", "About", "Contact"].map((item) => (
+          {["Menu", "Loyalty", "About", "Contact"].map((item) => (
             <Link
               key={item}
               href={`/${item.toLowerCase()}`}
