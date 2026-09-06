@@ -1,15 +1,25 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Store, Activity, AlertTriangle, Clock } from "lucide-react";
-import { usePlatformStores, useUpdateStoreStatus } from "@/hooks/usePlatform";
+import { Search, Plus } from "lucide-react";
+import {
+  usePlatformStores,
+  useCreateStore,
+  useUpdateStoreStatus,
+} from "@/hooks/usePlatform";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { StatCardSkeleton } from "@/components/ui/StatCard";
 import { formatDate } from "@/lib/utils";
 import { useUIStore } from "@/stores/uiStore";
+import { useAuthStore } from "@/stores/authStore";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import type { IOnboarding } from "@/hooks/usePlatform";
 
 const statusVariant: Record<string, "success" | "warning" | "danger" | "info"> = {
   active: "success",
@@ -25,11 +35,25 @@ const typeBadge: Record<string, string> = {
   contracting: "bg-[var(--md-success-container)] text-[var(--md-success)]",
 };
 
+const storeSchema = z.object({
+  name: z.string().min(1, "Store name is required"),
+  domain: z.string().min(1, "Domain is required"),
+  tenant_type: z.string().min(1, "Store type is required"),
+  owner_email: z.string().email("Invalid email"),
+});
+
+type StoreFormData = z.infer<typeof storeSchema>;
+
 export default function PlatformStoresPage() {
   const { data: stores, isLoading } = usePlatformStores();
   const updateStatus = useUpdateStoreStatus();
+  const createStore = useCreateStore();
   const addToast = useUIStore((s) => s.addToast);
+  const user = useAuthStore((s) => s.user);
   const [search, setSearch] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [onboarding, setOnboarding] = useState<IOnboarding | null>(null);
+  const [onboardingStoreName, setOnboardingStoreName] = useState("");
   const [actionStore, setActionStore] = useState<{
     id: string;
     name: string;
@@ -37,6 +61,16 @@ export default function PlatformStoresPage() {
     tenant_type: string;
     slug: string;
   } | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<StoreFormData>({
+    resolver: zodResolver(storeSchema),
+    defaultValues: { tenant_type: "retail" },
+  });
 
   const allStores = stores?.data ?? [];
 
@@ -56,9 +90,26 @@ export default function PlatformStoresPage() {
     const active = allStores.filter((s) => s.status === "active").length;
     const trial = allStores.filter((s) => s.status === "trial").length;
     const suspended = allStores.filter((s) => s.status === "suspended").length;
-    const dormant = allStores.filter((s) => s.status === "inactive").length;
-    return { total: allStores.length, active, trial, suspended, dormant };
+    return { total: allStores.length, active, trial, suspended };
   }, [allStores]);
+
+  const handleCreate = async (data: StoreFormData) => {
+    try {
+      const result = await createStore.mutateAsync({
+        ...data,
+        domain: data.domain.toLowerCase().replace(/[^a-z0-9.-]/g, ""),
+      });
+      addToast({ type: "success", message: "Store created successfully" });
+      reset();
+      setShowCreate(false);
+      if (result.onboarding) {
+        setOnboarding(result.onboarding);
+        setOnboardingStoreName(result.name);
+      }
+    } catch {
+      addToast({ type: "error", message: "Failed to create store" });
+    }
+  };
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!actionStore) return;
@@ -74,6 +125,8 @@ export default function PlatformStoresPage() {
     }
   };
 
+  const isPlatformAdmin = user?.role === "platform_admin";
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -86,6 +139,12 @@ export default function PlatformStoresPage() {
             Manage all registered stores across your platform
           </p>
         </div>
+        {isPlatformAdmin && (
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus size={16} className="mr-2" />
+            Add Store
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -97,30 +156,10 @@ export default function PlatformStoresPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total Stores"
-            value={stats.total}
-            icon={<Store size={20} />}
-            changeType="neutral"
-          />
-          <StatCard
-            label="Active"
-            value={stats.active}
-            icon={<Activity size={20} />}
-            changeType="up"
-          />
-          <StatCard
-            label="On Trial"
-            value={stats.trial}
-            icon={<Clock size={20} />}
-            changeType="neutral"
-          />
-          <StatCard
-            label="Suspended"
-            value={stats.suspended}
-            icon={<AlertTriangle size={20} />}
-            changeType={stats.suspended > 0 ? "down" : "up"}
-          />
+          <MiniStat label="Total" value={stats.total} />
+          <MiniStat label="Active" value={stats.active} />
+          <MiniStat label="On Trial" value={stats.trial} />
+          <MiniStat label="Suspended" value={stats.suspended} />
         </div>
       )}
 
@@ -236,7 +275,9 @@ export default function PlatformStoresPage() {
                       colSpan={5}
                       className="px-6 py-12 text-center text-[var(--md-on-surface-variant)]"
                     >
-                      {search ? "No stores match your search" : "No stores found"}
+                      {search
+                        ? "No stores match your search"
+                        : "No stores yet. Click 'Add Store' to create one."}
                     </td>
                   </tr>
                 )}
@@ -246,6 +287,92 @@ export default function PlatformStoresPage() {
         </div>
       )}
 
+      {/* Create Store Dialog */}
+      <Dialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        title="Create New Store"
+      >
+        <form onSubmit={handleSubmit(handleCreate)} className="space-y-4">
+          <Input
+            label="Store Name"
+            {...register("name")}
+            error={errors.name?.message}
+            placeholder="e.g. Mama's Supermarket"
+          />
+          <Input
+            label="Domain"
+            {...register("domain")}
+            error={errors.domain?.message}
+            placeholder="e.g. mamas.ke"
+          />
+          <Select
+            label="Store Type"
+            options={[
+              { value: "retail", label: "Retail" },
+              { value: "restaurant", label: "Restaurant" },
+              { value: "bar", label: "Bar / Nightclub" },
+              { value: "contracting", label: "Contracting" },
+            ]}
+            {...register("tenant_type")}
+            error={errors.tenant_type?.message}
+          />
+          <Input
+            label="Owner Email"
+            type="email"
+            {...register("owner_email")}
+            error={errors.owner_email?.message}
+            placeholder="owner@example.com"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowCreate(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createStore.isPending}>
+              {createStore.isPending ? "Creating..." : "Create Store"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Onboarding Success Dialog */}
+      <Dialog
+        open={!!onboarding}
+        onClose={() => setOnboarding(null)}
+        title="Store Created Successfully!"
+      >
+        {onboarding && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-[var(--md-success)]/20 bg-[var(--md-success-container)] p-4 text-center">
+              <p className="text-sm font-medium text-[var(--md-success)]">
+                {onboardingStoreName} is now live!
+              </p>
+            </div>
+            <div className="rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-variant)] p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--md-on-surface-variant)]">
+                Owner Credentials
+              </p>
+              <p className="text-sm text-[var(--md-on-surface)]">
+                Email: <span className="font-medium">{onboarding.owner_email}</span>
+              </p>
+              <p className="text-sm text-[var(--md-on-surface)]">
+                Password:{" "}
+                <span className="rounded bg-[var(--md-primary-container)] px-2 py-0.5 font-mono text-xs font-bold text-[var(--md-on-primary-container)]">
+                  {onboarding.temporary_password}
+                </span>
+              </p>
+            </div>
+            <Button onClick={() => setOnboarding(null)} className="w-full">
+              Done
+            </Button>
+          </div>
+        )}
+      </Dialog>
+
       {/* Manage Dialog */}
       <Dialog
         open={!!actionStore}
@@ -254,7 +381,6 @@ export default function PlatformStoresPage() {
       >
         {actionStore && (
           <div className="space-y-4">
-            {/* Store Info */}
             <div className="rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-variant)] p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--md-primary-container)] text-lg font-bold text-[var(--md-on-primary-container)]">
@@ -270,8 +396,6 @@ export default function PlatformStoresPage() {
                 </div>
               </div>
             </div>
-
-            {/* Status */}
             <div className="flex items-center gap-3">
               <span className="text-sm text-[var(--md-on-surface-variant)]">
                 Current status:
@@ -280,8 +404,6 @@ export default function PlatformStoresPage() {
                 {actionStore.status}
               </Badge>
             </div>
-
-            {/* Actions */}
             <div className="flex gap-2">
               {actionStore.status !== "active" && (
                 <Button onClick={() => handleStatusUpdate("active")}>
@@ -307,27 +429,13 @@ export default function PlatformStoresPage() {
   );
 }
 
-/* --- Stat Card (inline to avoid import issues) --- */
-function StatCard({
-  label,
-  value,
-  icon,
-  changeType,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ReactNode;
-  changeType?: "up" | "down" | "neutral";
-}) {
+function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="premium-card rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-6 backdrop-blur-md transition-all duration-200 hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-[var(--md-on-surface-variant)]">
-          {label}
-        </p>
-        <div className="text-[var(--md-tertiary)]">{icon}</div>
-      </div>
-      <p className="mt-2 text-2xl font-semibold text-[var(--md-on-surface)]">
+    <div className="premium-card rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] p-4 backdrop-blur-md">
+      <p className="text-xs font-medium text-[var(--md-on-surface-variant)]">
+        {label}
+      </p>
+      <p className="mt-1 text-xl font-semibold text-[var(--md-on-surface)]">
         {value}
       </p>
     </div>
