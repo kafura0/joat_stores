@@ -45,6 +45,7 @@ Used by `Store` itself (the tenant root).
 | `timezone` | CharField(63) | default: "Africa/Nairobi" | IANA timezone |
 | `created_at` | DateTimeField | auto_now_add | Creation timestamp |
 | `updated_at` | DateTimeField | auto_now | Last update timestamp |
+| `mpesa_shortcode` | CharField | blank | Till/paybill number for C2B payments |
 
 **Custom Logic:**
 - `save()` enforces `tenant_type` immutability once orders exist
@@ -59,6 +60,11 @@ Used by `Store` itself (the tenant root).
 | `tagline` | CharField(255) | "" | Store tagline |
 | `logo_url` | URLField | "" | Store logo URL |
 | `low_stock_threshold` | IntegerField | 5 | Low-stock alert threshold |
+| `tax_rate` | DecimalField | 0.16 | Tax rate |
+| `tax_inclusive` | BooleanField | True | Tax-inclusive pricing |
+| `currency_symbol` | CharField | "KES" | Currency symbol |
+| `receipt_header` | CharField | "" | Receipt header text |
+| `receipt_footer` | CharField | "" | Receipt footer text |
 
 ### StoreTheme
 
@@ -154,6 +160,8 @@ Used by `Store` itself (the tenant root).
 | `created_at` | DateTimeField | Creation timestamp |
 | `payment_transaction` | ForeignKey(MpesaTransaction) | Linked payment |
 | `customer` | ForeignKey(User) | Registered customer (nullable) |
+| `coupon_code` | CharField(50) | blank | Applied coupon code |
+| `discount_amount` | DecimalField | default 0 | Discount applied from coupon |
 
 **State Machine:**
 ```
@@ -172,6 +180,25 @@ CONFIRMED → CANCELLED (with reversal)
 | `items` | JSONField | Cart items |
 | `created_at` | DateTimeField | Creation timestamp |
 | `linked_order` | OneToOneField(Order) | Linked order after checkout |
+
+### Coupon
+
+**Inherits:** TenantModel
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | CharField(50) | Unique coupon code (case-insensitive) |
+| `description` | TextField | Coupon description |
+| `discount_type` | CharField(10) | choices: percentage / fixed |
+| `discount_value` | DecimalField | Percentage (0-100) or fixed amount |
+| `min_order_amount` | DecimalField | Minimum order total to apply |
+| `max_uses` | IntegerField | Maximum total uses (0 = unlimited) |
+| `times_used` | IntegerField | Current usage count |
+| `valid_from` | DateTimeField | Start date |
+| `valid_to` | DateTimeField | End date |
+| `is_active` | BooleanField | Enable/disable toggle |
+| `applicable_products` | ManyToManyField(Product) | Restrict to specific products (blank = all) |
+| `applicable_categories` | ManyToManyField(Category) | Restrict to specific categories (blank = all) |
 
 ---
 
@@ -753,34 +780,13 @@ TRIAL → ACTIVE → PAST_DUE → SUSPENDED/CANCELLED
 
 **Inherits:** TenantModel
 
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `customer_phone` | CharField(30) | indexed | Customer phone |
-| `points_balance` | IntegerField | | Current balance |
-| `lifetime_earned` | IntegerField | | Total earned |
-| `customer` | ForeignKey(User) | | Registered customer |
-
-**Constraints:** unique_together(store, customer_phone)
-
-**Custom Logic:**
-- `earn(points, source, reference)` adds points + creates transaction
-- `redeem(points, reference)` deducts points + creates transaction
-
-### PointsTransaction
-
-**Inherits:** TenantModel
-
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `delta` | IntegerField | | Positive = earned, negative = redeemed |
-| `balance_after` | IntegerField | | Balance after transaction |
-| `source` | CharField(20) | indexed | order/redemption/manual/expiry |
-| `reference` | CharField(255) | | Related reference |
-| `occurred_at` | DateTimeField | indexed | Transaction timestamp |
-| `account` | ForeignKey(LoyaltyAccount) | | Parent account |
-
-**Custom Logic:**
-- `save()` enforces append-only (rejects updates)
+| Field | Type | Description |
+|-------|------|-------------|
+| `phone` | CharField(20) | Customer phone number (normalized) |
+| `name` | CharField(100) | Customer name |
+| `points_balance` | IntegerField | Current points |
+| `total_points_earned` | IntegerField | Lifetime points earned |
+| `total_points_redeemed` | IntegerField | Lifetime points redeemed |
 
 ### StampCard
 
@@ -788,11 +794,25 @@ TRIAL → ACTIVE → PAST_DUE → SUSPENDED/CANCELLED
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | CharField(100) | Card name |
-| `stamps_required` | PositiveIntegerField | Threshold (default: 10) |
-| `reward_description` | CharField(255) | Reward description |
-| `points_per_stamp` | IntegerField | Bonus points on completion |
-| `is_active` | BooleanField | Active flag |
+| `name` | CharField(100) | Stamp card name |
+| `description` | TextField | Description |
+| `stamps_required` | IntegerField | Stamps needed to earn reward |
+| `reward_description` | CharField(255) | What the customer earns |
+| `is_active` | BooleanField | Enable/disable |
+| `points_per_stamp` | IntegerField | Points earned per stamp |
+
+### LoyaltyTransaction
+
+**Inherits:** TenantModel
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `account` | ForeignKey(LoyaltyAccount) | Loyalty account |
+| `type` | CharField(10) | choices: earn / redeem / adjust |
+| `points` | IntegerField | Points earned (positive) or redeemed (negative) |
+| `order` | ForeignKey(Order, null) | Related order (for earn transactions) |
+| `stamp_card` | ForeignKey(StampCard, null) | Related stamp card |
+| `description` | TextField | Transaction description |
 
 ### CustomerStampCard
 
@@ -923,14 +943,23 @@ TRIAL → ACTIVE → PAST_DUE → SUSPENDED/CANCELLED
 - UniqueConstraint(email, store) — unique per store
 - UniqueConstraint(email) WHERE store IS NULL — prevents duplicate platform_admin emails
 
+**Role Choices:**
+- `platform_admin` — Platform administrator (store = null)
+- `store_owner` — Store owner
+- `store_manager` — Store manager
+- `kitchen` — Kitchen display access (restaurant)
+- `waiter` — Waiter operations (restaurant)
+- `cashier` — Payment processing access
+- `customer` — Customer role
+
 ---
 
 ## Model Statistics
 
 | Category | Count |
 |----------|-------|
-| Total model classes | 47 |
-| Models inheriting TenantModel | 33 |
+| Total model classes | 48 |
+| Models inheriting TenantModel | 34 |
 | Models inheriting SoftDeleteModel | 1 |
 | Models on AbstractUser | 1 |
 | Models on plain models.Model | 12 |
@@ -950,7 +979,7 @@ TRIAL → ACTIVE → PAST_DUE → SUSPENDED/CANCELLED
 | saas | Plan, StoreSubscription |
 | analytics | AdminPIIAccessLog, DailyRevenueSummary, HourlyOrderSummary, AIEvent, TenantHealthSnapshot, StoreFirstOrderEvent |
 | ai | (none — namespace placeholder) |
-| loyalty | LoyaltyAccount, PointsTransaction, StampCard, CustomerStampCard, CustomerStamp, CustomerProfile |
+| loyalty | LoyaltyAccount, LoyaltyTransaction, StampCard, CustomerStampCard, CustomerStamp, CustomerProfile, Coupon |
 | notifications | WhatsAppMessage, WhatsAppInboundMessage, FCMDevice |
 | users | PlatformUser, User |
 | inventory | (empty file) |

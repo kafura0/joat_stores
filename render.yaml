@@ -62,6 +62,12 @@ services:
       # QR code signing
       - key: HMAC_QR_SECRET
         generateValue: true
+      # Internal cron endpoint (Upstash QStash)
+      - key: CRON_SECRET
+        generateValue: true
+      # Upstash QStash signing key (for signature verification)
+      - key: QSTASH_SIGNING_KEY
+        value: ""
       # WhatsApp webhook
       - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
         generateValue: true

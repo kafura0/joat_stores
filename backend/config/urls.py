@@ -15,6 +15,7 @@ from apps.analytics.urls import platform_urlpatterns as analytics_platform_urlpa
 from apps.saas.urls import platform_urlpatterns as saas_platform_urlpatterns
 from apps.store.urls import storefront_urlpatterns
 from apps.users.management_views import UserDetailView, UserManagementView
+from core.cron_views import run_cron
 from core.worker_health import WorkerHealthView
 
 
@@ -26,6 +27,7 @@ def health_check(request):
 urlpatterns = [
     path("health/", health_check, name="health"),
     path("health/workers/", WorkerHealthView.as_view(), name="health-workers"),  # Story 7.3
+    path("api/v1/internal/run-cron/", run_cron, name="internal-run-cron"),  # Upstash QStash cron trigger
     path("admin/", admin.site.urls),
     # OpenAPI schema — Story 1.6
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="api-schema"),

@@ -8,8 +8,8 @@ Welcome to JOAT Stores! This guide will get you from zero to productive in under
 
 - **Docker Desktop** (or Docker Engine + Compose on Linux)
 - **Git**
-- **Node.js 18+** (for frontend development outside Docker)
-- **Python 3.14+** (for backend development outside Docker)
+- **Node.js 22 LTS** (for frontend development outside Docker)
+- **Python 3.10+** (for backend development outside Docker)
 - A text editor (VS Code recommended)
 
 ---
@@ -32,7 +32,7 @@ This starts 9 services:
 | Service | Port | Description |
 |---------|------|-------------|
 | Django API | :8000 | Backend REST API |
-| PostgreSQL | :5432 | Database |
+| PostgreSQL | :5433 | Database (note: 5433 externally, 5432 internally) |
 | Redis | :6379 | Cache + Celery broker |
 | Celery Worker | — | Async task processing |
 | Celery Beat | — | Scheduled tasks |
@@ -56,6 +56,13 @@ This creates:
 - 4 subscription plans
 - ~40 products
 - 25 backdated orders
+
+### New Features Available After Seeding
+- **Loyalty page** (`/loyalty`) — Customer can check points by phone number
+- **Cart & Checkout** (`/cart`, `/checkout`) — Full shopping flow with M-Pesa
+- **Coupons** (`/coupons` in admin) — Create and manage discount codes
+- **Staff management** (`/staff` in admin) — Add kitchen, waiter, cashier roles
+- **Logo upload** (`/settings` in admin) — Upload store logo with file picker
 
 ---
 
@@ -195,6 +202,16 @@ cd storefront && npx tsc --noEmit
 cd admin && npx tsc --noEmit
 ```
 
+### Shared Package
+Frontend code shared between admin and storefront lives in `packages/shared/`:
+- `src/types/index.ts` — Shared TypeScript types
+- `src/api/api.ts` — Axios API client with auth interceptors
+- `src/utils/format.ts` — Currency formatting, phone normalization
+- `src/stores/authStore.ts` — Zustand auth store
+- `src/styles/tokens.css` — Material Design 3 tokens
+
+Both apps import from `@joat/shared` via npm workspace.
+
 ### Database Changes
 
 ```bash
@@ -282,7 +299,23 @@ return Response(
 
 ---
 
-## 9. Testing
+## 9. API Endpoints Quick Reference
+
+### New API Endpoints
+- `POST /api/v1/store/products/import/` — CSV product import
+- `POST /api/v1/store/settings/logo/` — Logo file upload
+- `GET/POST /api/v1/store/coupons/` — Coupon CRUD
+- `POST /api/v1/store/coupons/validate/` — Validate coupon code
+- `GET/POST /api/v1/store/loyalty/accounts/` — Loyalty accounts
+- `GET/POST /api/v1/store/loyalty/stamp-cards/` — Stamp cards
+- `GET /api/v1/store/loyalty/check/?phone=...` — Check loyalty points
+- `GET/POST /api/v1/users/` — Staff management
+- `POST /api/v1/payments/c2b-register/` — Register C2B URLs
+- `POST /api/v1/payments/c2b-callback/` — C2B callback
+
+---
+
+## 10. Testing
 
 ### Backend Tests
 
@@ -307,9 +340,14 @@ No test framework prescribed at MVP. When added:
 - Wrap in `QueryClientProvider` with fresh `QueryClient`
 - Mock `lib/api.ts` axios instance
 
+### Current Test Status
+- Backend: 94/94 tests passing
+- Both frontends build clean
+- Run backend tests: `docker compose exec django pytest`
+
 ---
 
-## 10. Environment Variables
+## 11. Environment Variables
 
 ### Backend (`.env`)
 
@@ -336,7 +374,7 @@ No test framework prescribed at MVP. When added:
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### "Connection refused" errors
 - Ensure Docker is running
@@ -360,7 +398,7 @@ No test framework prescribed at MVP. When added:
 
 ---
 
-## 12. Useful Commands
+## 13. Useful Commands
 
 ```bash
 # Docker
@@ -384,7 +422,7 @@ docker compose exec redis redis-cli  # Redis CLI
 
 ---
 
-## 13. Further Reading
+## 14. Further Reading
 
 - [CLAUDE.md](../CLAUDE.md) — Project context for AI agents
 - [API Reference](./api_reference.md) — Complete API documentation

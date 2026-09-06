@@ -58,6 +58,7 @@ One Django backend powers N independent storefronts via domain-based tenant reso
 - Full tenant isolation at queryset, serializer, and permission layers
 - No cross-tenant data access — enforced at every layer
 - Store configuration and theme customization per tenant
+- **StoreSettings** — tax rate, tax-inclusive flag, currency symbol, receipt header/footer
 - Feature flags tied to subscription plan
 - Subscription tier enforcement (Basic / Growth / Pro)
 - Platform Admin panel with full multi-store visibility
@@ -72,9 +73,22 @@ Every store gets a fully customizable theme without touching code:
 - **Custom CSS Injection** — merchant-written CSS injected at runtime via inline `<style>`
 - **Announcement Bar** — toggleable banner with custom text and accent colour
 - **Admin Theme Config Page** — full visual editor at `/settings` with colour pickers, font dropdowns, live preview button
+- **Logo file upload endpoint**: `POST /api/v1/store/settings/logo/` (compresses to WebP)
+- **Admin settings page with file upload + preview**
 - **REST API** — `GET/PATCH /themes/`, `GET /themes/presets/`, `POST /themes/apply-preset/`
 
+### 🧭 Admin Dashboard
+
+- `/coupons` — Coupon CRUD management
+- `/loyalty` — Stamp cards + customer profiles
+
 ### 🛒 Commerce Engine (B2B2C Customer Purchases)
+
+**Storefront Shopping Experience**
+- Product listing page with `ProductCard` components (quantity controls)
+- Cart page at `/cart` with coupon input
+- Checkout page at `/checkout` with M-Pesa STK Push
+- `CartIcon` with badge count in header
 
 **Products**
 - Product catalog with categories, attributes, and variants
@@ -92,14 +106,16 @@ Every store gets a fully customizable theme without touching code:
 - Delivery tracking integration-ready
 
 **Cart**
-- Store-isolated, Redis-backed persistent cart
+- Zustand-based cart with localStorage persistence (no Redis dependency)
 - Guest cart and authenticated cart merge
-- Coupon and discount support
+- Coupon/discount support (percentage/fixed, min order, max uses, date windows)
 - Abandoned cart tracking
 
 ### 💳 Payments
 
 - **M-Pesa integration** (primary — STK Push, C2B, B2C)
+- C2B till/paybill payments via Safaricom Daraja (register C2B URLs, receive callbacks, match to pending orders)
+- `Store.mpesa_shortcode` for till/paybill number
 - Card payments (provider-agnostic scaffold - Story 2.6)
 - Webhook verification and idempotency
 - Payment records with provider reference tracking
@@ -113,6 +129,9 @@ Every store gets a fully customizable theme without touching code:
 | Platform Admin | Full platform — all stores, all tenants | Platform |
 | Store Owner | Single store — full access | Business |
 | Store Manager | Single store — operational access | Business |
+| Kitchen | Single store — kitchen display (restaurant) | Business |
+| Waiter | Single store — pending orders, bill splits, tabs | Business |
+| Cashier | Single store — payment processing | Business |
 | Customer | Store-scoped — own orders and profile | Consumer |
 
 - JWT authentication (short-lived access + refresh tokens)
@@ -193,6 +212,10 @@ Dedicated queues: `order.notifications`, `inventory.alerts`, `billing.reminders`
 - Scheduled reporting (daily/hourly aggregation)
 - Dead-letter queue + exponential backoff retry
 - Worker health monitoring endpoint
+- **Cron jobs:**
+  - `core.tasks.heartbeat` — runs every 5 minutes
+  - `store.tasks.warm_branding_cache` — runs hourly, caches branding for all active stores
+  - `inventory.tasks.check_low_stock` — runs hourly, all-stores mode
 
 ### 🔒 Security
 
@@ -228,6 +251,7 @@ Dedicated queues: `order.notifications`, `inventory.alerts`, `billing.reminders`
 - WhatsApp notification dispatch
 - Unified customer profile (RFM segmentation)
 - WhatsApp ordering bridge
+- Customer loyalty page at `/loyalty` — phone lookup, points balance, stamp card progress, transaction history
 
 ### 🐳 Infrastructure
 

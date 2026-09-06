@@ -124,6 +124,65 @@ User submits credentials
 
 ---
 
+## Cart & Checkout Flow
+
+```
+Customer browses products
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│    ProductCard component                │
+│    - Fetches products from /store/products/ │
+│    - Quantity controls (±)              │
+│    - Add to cart → Zustand store        │
+│      (localStorage persistence)         │
+└─────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│    Cart page (/cart)                    │
+│    - Item list with quantity adjust     │
+│    - Coupon code input → POST /coupons/validate/ │
+│    - Order summary (subtotal, discount, total)   │
+└─────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│    Checkout page (/checkout)            │
+│    - Phone number input                 │
+│    - M-Pesa STK Push initiation         │
+│    - POST /payments/stk-push/           │
+│    - Poll for payment confirmation      │
+│    - On success → redirect to confirmation │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## C2B Till Payment Flow
+
+```
+Customer pays at till
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│    Safaricom sends C2B callback         │
+│    POST /payments/c2b-callback/         │
+└─────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│    process_c2b_callback Celery task     │
+│    1. Match payment to pending order    │
+│       by phone number + amount          │
+│    2. Create MpesaTransaction record    │
+│    3. Update Order payment_status       │
+│    4. Trigger order confirmation email  │
+└─────────────────────────────────────────┘
+```
+
+---
+
 ## Order Lifecycle State Machine
 
 ```
@@ -343,6 +402,31 @@ Valid Transitions:
 │  Monday 08:00:  send_merchant_weekly_digest                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Cron Jobs & Scheduled Tasks
+
+| Task | Schedule | Description |
+|------|----------|-------------|
+| `core.tasks.heartbeat` | Every 5 min | System health check |
+| `store.tasks.warm_branding_cache` | Hourly | Cache branding for all active stores |
+| `inventory.tasks.check_low_stock` | Hourly | Detect low-stock products (all-stores mode) |
+| `saas.tasks.expire_trials` | Daily 00:30 | Expire overdue trial subscriptions |
+| `saas.tasks.activate_trial_subscriptions` | Daily 00:15 | Auto-activate new trial subscriptions |
+
+---
+
+## Performance Indexes
+
+| Model | Index | Columns | Purpose |
+|-------|-------|---------|---------|
+| Order | `idx_order_store_date` | store_id, created_at | Dashboard queries, analytics aggregation |
+| MpesaTransaction | `checkout_idx` | checkout_request_id | STK callback lookup |
+| MpesaTransaction | `store_status_idx` | store_id, status | Payment reconciliation |
+| MpesaTransaction | `store_date_idx` | store_id, initiated_at | Payment history |
+| User | `idx_user_store_role` | store_id, role | Staff management, RBAC |
+| Store | `idx_store_status` | status | Platform dashboard queries |
 
 ---
 

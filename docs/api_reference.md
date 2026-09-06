@@ -65,6 +65,14 @@ All responses use the standard envelope format:
 
 ---
 
+## Store — Logo Upload
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/store/settings/logo/` | Store manager | Upload logo file. Accepts multipart form with `logo` field (image). Compresses to WebP, saves to MEDIA_ROOT/logos/. Returns `{ data: { logo_url: "..." } }` |
+
+---
+
 ## Products — Categories
 
 | Method | Endpoint | Description |
@@ -118,6 +126,15 @@ All responses use the standard envelope format:
 
 ---
 
+## Products — Import
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/store/products/import/` | Store manager | Import products from CSV. Accepts multipart form with `file` field. Optional `category` param to assign all imported products to a category. Returns `{ data: { imported: N, errors: [...] } }` |
+| GET | `/store/products/import/template/` | Store manager | Download CSV template for import |
+
+---
+
 ## Orders — Cart
 
 | Method | Endpoint | Description |
@@ -155,6 +172,46 @@ All responses use the standard envelope format:
 
 ---
 
+## Orders — Coupons
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/store/coupons/` | Store manager | List all coupons |
+| POST | `/store/coupons/` | Store manager | Create coupon (percentage or fixed discount) |
+| GET | `/store/coupons/{id}/` | Store manager | Get coupon detail |
+| PUT/PATCH | `/store/coupons/{id}/` | Store manager | Update coupon |
+| DELETE | `/store/coupons/{id}/` | Store manager | Delete coupon |
+| POST | `/store/coupons/validate/` | Public | Validate coupon code. Body: `{ "code": "...", "order_total": 1000 }`. Returns discount details |
+
+---
+
+## Staff Management
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/users/` | Store owner/manager | List all users for the store |
+| POST | `/users/` | Store owner | Create new staff user |
+| GET | `/users/{id}/` | Store owner/manager | Get user detail |
+| PATCH | `/users/{id}/` | Store owner | Update user (role, name, email) |
+| DELETE | `/users/{id}/` | Store owner | Deactivate user |
+
+---
+
+## Loyalty
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/store/loyalty/accounts/` | Store manager | List loyalty accounts |
+| GET | `/store/loyalty/accounts/{id}/` | Store manager | Get loyalty account detail with transaction history |
+| GET | `/store/loyalty/stamp-cards/` | Store manager | List stamp cards |
+| POST | `/store/loyalty/stamp-cards/` | Store manager | Create stamp card |
+| GET | `/store/loyalty/stamp-cards/{id}/` | Store manager | Get stamp card detail |
+| PUT/PATCH | `/store/loyalty/stamp-cards/{id}/` | Store manager | Update stamp card |
+| POST | `/store/loyalty/redeem/` | Store manager | Redeem points for reward |
+| GET | `/store/loyalty/check/` | Public | Check loyalty points by phone number. Query: `?phone=...` |
+
+---
+
 ## Payments
 
 | Method | Endpoint | Description |
@@ -164,6 +221,16 @@ All responses use the standard envelope format:
 | POST | `/payments/{id}/reverse/` | Queue M-Pesa reversal (store manager only) |
 | POST | `/payments/card/initiate/` | Stripe card payment scaffold (returns 501) |
 | POST | `/payments/stripe-webhook/` | Stripe webhook (public, signature verified) |
+
+---
+
+## Payments — C2B
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/payments/c2b-register/` | Store manager | Register C2B callback URLs with Safaricom |
+| POST | `/payments/c2b-callback/` | Public (webhook) | Receive C2B payment notification from Safaricom |
+| POST | `/payments/c2b-validation/` | Public (webhook) | Validate incoming C2B payment |
 
 ---
 
@@ -422,3 +489,13 @@ All responses use the standard envelope format:
 | Notifications | 2 |
 | Customer Hub | 8 |
 | **Total** | **~180** |
+
+---
+
+## Internal — Cron Trigger
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/internal/run-cron/` | Bearer token (`CRON_SECRET`) or QStash signature | Trigger a cron task. Body: `{"task": "heartbeat" \| "warm_branding_cache" \| "check_low_stock"}` |
+
+Used by Upstash QStash to trigger scheduled tasks on Render free tier (no Celery Beat needed).

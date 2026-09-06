@@ -39,11 +39,17 @@ joat_stores/
 - **Every domain model** inherits `TenantModel` (UUID PK + `store` FK + soft-delete).
 - **Never filter without store_id** — all queries must be scoped to a tenant.
 - **TenantMiddleware** resolves `request.store` from the `Host` header or `X-Store-ID` header.
-- **JWT claims** include `store_id` and `role`. Four roles: `platform_admin`, `store_owner`, `store_manager`, `customer`.
+- **JWT claims** include `store_id` and `role`. Seven roles: `platform_admin`, `store_owner`, `store_manager`, `customer`, `kitchen`, `waiter`, `cashier`.
 - **RBAC** is enforced via JWT role claim only — never use `is_staff` / `is_superuser`.
 - **Analytics** reads from pre-aggregated `DailyRevenueSummary` + `HourlyOrderSummary` — never live ORM aggregates.
 - **Orders** use `items_snapshot` (denormalized JSON) — no separate line-items table.
 - **Celery queues**: `order.notifications`, `inventory.alerts`, `billing.reminders`, `payments.reconciliation`, `analytics.reports`.
+
+### Role descriptions
+
+- `kitchen` — Kitchen display access (restaurant), sees assigned tickets
+- `waiter` — Waiter operations (pending orders, bill splits, tab management)
+- `cashier` — Payment processing access
 
 ## Local development
 
@@ -117,6 +123,85 @@ Creates: 3 stores (retail, restaurant, bar), 4 subscription plans, ~40 products,
 
 Intentionally left as a 501 scaffold — requires a payment provider (Stripe or Flutterwave).
 All other payment flows (M-Pesa STK Push, M-Pesa C2B) are fully implemented.
+
+## Payments
+
+### M-Pesa STK Push
+
+- `POST /api/v1/payments/stk-push/` — Initiate STK Push to customer phone
+- `POST /api/v1/payments/stk-callback/` — Safaricom callback endpoint
+
+### M-Pesa C2B (Till/Paybill)
+
+- `Store.mpesa_shortcode` field stores till/paybill number
+- `POST /api/v1/payments/c2b-register/` — Register C2B callback URLs with Safaricom
+- `POST /api/v1/payments/c2b-callback/` — Receive C2B payment notifications
+- `POST /api/v1/payments/c2b-validation/` — Validate incoming C2B payments
+- `process_c2b_callback` Celery task — matches payments to pending orders
+
+## Loyalty
+
+- Phone lookup to check points balance
+- Stamp card progress display
+- Transaction history
+
+### Storefront loyalty page
+
+- `/loyalty` — Customer-facing page for loyalty program
+
+## Commerce Engine
+
+### Storefront shopping experience
+
+- Zustand-based cart with localStorage persistence
+- `ProductCard` component with quantity controls
+- Cart page at `/cart` with coupon input
+- Checkout page at `/checkout` with M-Pesa STK Push
+
+### Coupon/discount system
+
+- Percentage or fixed-amount discounts
+- Minimum order requirements
+- Maximum use limits
+- Date window (start/end) support
+- Product-specific restrictions
+
+## Store Settings
+
+- `POST /api/v1/store/settings/logo/` — Upload logo file (compresses to WebP, saves to MEDIA_ROOT/logos/)
+- Admin settings page with file upload button + preview
+
+### StoreSettings model fields
+
+- `tax_rate` — DecimalField, default `0.16`
+- `tax_inclusive` — BooleanField, default `True`
+- `currency_symbol` — CharField, default `"KES"`
+- `receipt_header` — CharField
+- `receipt_footer` — CharField
+
+## Async & Background Jobs
+
+### Cron jobs (Upstash QStash — free tier)
+
+Render free tier doesn't run Celery Beat. Cron tasks are triggered via Upstash QStash calling `POST /api/v1/internal/run-cron/`.
+
+- `core.tasks.heartbeat` — every 5 minutes (worker health check)
+- `store.tasks.warm_branding_cache` — hourly (pre-warm Redis branding cache)
+- `inventory.tasks.check_low_stock` — hourly (detect low-stock variants, send alerts)
+
+Auth: `CRON_SECRET` env var (bearer token) or `QSTASH_SIGNING_KEY` (HMAC signature).
+
+## Users
+
+### Staff management endpoints
+
+- `UserManagementView` — list/create/update staff users (role, name, email)
+- `UserDetailView` — retrieve/update/delete individual staff users
+
+## Admin pages
+
+- `/coupons` — Coupon CRUD management
+- `/loyalty` — Stamp cards + customer profiles
 
 ## Testing
 
