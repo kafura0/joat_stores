@@ -58,16 +58,23 @@ class StoreProvisionView(generics.CreateAPIView):
         )
 
 
-class StoreListView(generics.ListAPIView):
+class StoreListView(APIView):
     """
-    GET /api/v1/platform/stores/
+    GET /api/v1/platform/stores/list/
 
     Lists all stores. Platform admin only.
+    Returns { data: [...], meta: {...} } format.
     """
 
     permission_classes = [IsPlatformAdmin]
-    serializer_class = StoreDetailSerializer
-    queryset = Store.objects.all().select_related("subscription")
+
+    def get(self, request):
+        stores = Store.objects.all().select_related("subscription").order_by("-created_at")
+        serializer = StoreDetailSerializer(stores, many=True)
+        return Response({
+            "data": serializer.data,
+            "meta": {"count": len(serializer.data), "next": None, "previous": None},
+        })
 
 
 class StoreStatusUpdateView(APIView):

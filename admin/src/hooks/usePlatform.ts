@@ -99,7 +99,7 @@ export function usePlatformStores() {
     queryKey: ["platform-stores"],
     queryFn: async () => {
       const { data } = await api.get<IApiListResponse<IStore>>(
-        "/platform/stores/"
+        "/platform/stores/list/"
       );
       return data;
     },
