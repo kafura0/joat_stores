@@ -55,10 +55,10 @@ const statusVariant: Record<string, "success" | "warning" | "danger" | "info"> =
 };
 
 const typeColors: Record<string, string> = {
-  retail: "bg-blue-50 text-blue-600 border-blue-100",
-  restaurant: "bg-amber-50 text-amber-600 border-amber-100",
-  bar: "bg-purple-50 text-purple-600 border-purple-100",
-  contracting: "bg-emerald-50 text-emerald-600 border-emerald-100",
+  retail: "bg-[var(--md-tertiary-container)] text-[var(--md-on-tertiary-container)]",
+  restaurant: "bg-[var(--md-warning-container)] text-[var(--md-warning)]",
+  bar: "bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]",
+  contracting: "bg-[var(--md-success-container)] text-[var(--md-success)]",
 };
 
 export default function PlatformPage() {

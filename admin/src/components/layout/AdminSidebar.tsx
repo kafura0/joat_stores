@@ -16,7 +16,10 @@ import {
   Store,
   Ticket,
   Star,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useThemeStore } from "@/stores/themeStore";
 import type { UserRole } from "@/types/auth";
 
 interface NavItem {
@@ -87,6 +90,7 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const navItems = getNavForRole(role);
+  const { isDark, toggle } = useThemeStore();
 
   return (
     <>
@@ -160,14 +164,22 @@ export default function AdminSidebar({
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] text-sm font-bold">
               A
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-1 flex-col min-w-0">
               <span className="text-sm font-medium text-[var(--md-on-surface)] truncate">
-                Store Admin
+                {role === "platform_admin" ? "Platform Admin" : "Store Admin"}
               </span>
               <span className="text-xs text-[var(--md-on-surface-variant)] truncate">
                 admin@joat.com
               </span>
             </div>
+            <button
+              onClick={toggle}
+              className="rounded-lg p-2 text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] hover:text-[var(--md-on-surface)]"
+              style={{ minHeight: 40, minWidth: 40 }}
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
           </div>
         </div>
       </aside>

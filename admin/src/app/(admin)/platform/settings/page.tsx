@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { CreditCard, Settings, Plus, Pencil, Trash2 } from "lucide-react";
 import { usePlans, useCreatePlan } from "@/hooks/usePlatform";
-import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
+import { StatCardSkeleton } from "@/components/ui/StatCard";
 import { useUIStore } from "@/stores/uiStore";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,6 +28,16 @@ type PlanFormData = z.infer<typeof planSchema>;
 
 export default function PlatformSettingsPage() {
   const [showCreatePlan, setShowCreatePlan] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<{
+    id: number;
+    name: string;
+    slug: string;
+    price_kes: string;
+    max_staff: number;
+    max_products: number;
+    monthly_order_limit: number;
+    is_public: boolean;
+  } | null>(null);
   const addToast = useUIStore((s) => s.addToast);
   const { data: plans, isLoading } = usePlans();
   const createPlan = useCreatePlan();
@@ -66,86 +77,112 @@ export default function PlatformSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--md-on-surface)]">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--md-on-surface)]">
             Platform Settings
           </h1>
-          <p className="text-sm text-[var(--md-on-surface-variant)]">
-            Configure platform-wide settings and plans
+          <p className="mt-1 text-sm text-[var(--md-on-surface-variant)]">
+            Configure subscription plans and platform defaults
           </p>
         </div>
-        <Button onClick={() => setShowCreatePlan(true)}>Add Plan</Button>
+        <Button onClick={() => setShowCreatePlan(true)}>
+          <Plus size={16} className="mr-2" />
+          Add Plan
+        </Button>
       </div>
 
       {/* Subscription Plans */}
-      <Card>
-        <CardHeader>
-          <h2 className="font-semibold text-[var(--md-on-surface)]">
+      <div className="premium-card overflow-hidden rounded-2xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] backdrop-blur-sm">
+        <div className="flex items-center gap-3 border-b border-[var(--md-outline-variant)] bg-[var(--md-surface-container)]/50 px-6 py-4">
+          <div className="rounded-lg bg-[var(--md-primary-container)] p-2">
+            <CreditCard size={20} className="text-[var(--md-primary)]" />
+          </div>
+          <h3 className="text-lg font-bold text-[var(--md-on-surface)]">
             Subscription Plans
-          </h2>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-xl bg-[var(--md-surface-variant)]" />
-              ))}
-            </div>
-          ) : plans && plans.length > 0 ? (
-            <div className="space-y-3">
-              {plans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className="flex items-center justify-between rounded-xl border border-[var(--md-outline-variant)] p-4 transition-colors hover:bg-[var(--md-surface-variant)]"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--md-primary-container)] text-sm font-bold text-[var(--md-on-primary-container)]">
-                      {plan.name[0]}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-[var(--md-on-surface)]">
-                          {plan.name}
-                        </p>
-                        <Badge variant={plan.is_active ? "success" : "danger"}>
-                          {plan.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                        {plan.is_public && (
-                          <Badge variant="info">Public</Badge>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-xs text-[var(--md-on-surface-variant)]">
-                        {formatCurrency(plan.price_kes)}/mo &middot;{" "}
-                        {plan.max_staff} staff &middot; {plan.max_products}{" "}
-                        products &middot; {plan.monthly_order_limit} orders/mo
+          </h3>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3 p-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-20 animate-pulse rounded-xl bg-[var(--md-surface-variant)]"
+              />
+            ))}
+          </div>
+        ) : plans && plans.length > 0 ? (
+          <div className="divide-y divide-[var(--md-outline-variant)]">
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-[var(--md-surface-variant)]/50"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--md-primary-container)] text-sm font-bold text-[var(--md-on-primary-container)]">
+                    {plan.name[0]}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-[var(--md-on-surface)]">
+                        {plan.name}
                       </p>
+                      <Badge variant={plan.is_active ? "success" : "danger"}>
+                        {plan.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                      {plan.is_public && <Badge variant="info">Public</Badge>}
                     </div>
+                    <p className="mt-0.5 text-xs text-[var(--md-on-surface-variant)]">
+                      {formatCurrency(plan.price_kes)}/mo ·{" "}
+                      {plan.max_staff} staff · {plan.max_products} products ·{" "}
+                      {plan.monthly_order_limit} orders/mo
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-[var(--md-on-surface-variant)]">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEditingPlan(plan)}
+                    className="rounded-lg p-2 text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] hover:text-[var(--md-on-surface)]"
+                    style={{ minHeight: 40, minWidth: 40 }}
+                    aria-label={`Edit ${plan.name}`}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="px-6 py-12 text-center">
+            <CreditCard
+              size={40}
+              className="mx-auto mb-3 text-[var(--md-on-surface-variant)]/30"
+            />
+            <p className="text-sm text-[var(--md-on-surface-variant)]">
               No plans configured yet
             </p>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
 
       {/* Platform Configuration */}
-      <Card>
-        <CardHeader>
-          <h2 className="font-semibold text-[var(--md-on-surface)]">
-            Platform Configuration
-          </h2>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-[var(--md-on-surface-variant)]">
-            Default currency: KES &middot; Tax rate: 16% &middot; Timezone: Africa/Nairobi
-          </p>
-        </CardContent>
-      </Card>
+      <div className="premium-card overflow-hidden rounded-2xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-container)] backdrop-blur-sm">
+        <div className="flex items-center gap-3 border-b border-[var(--md-outline-variant)] bg-[var(--md-surface-container)]/50 px-6 py-4">
+          <div className="rounded-lg bg-[var(--md-tertiary-container)] p-2">
+            <Settings size={20} className="text-[var(--md-tertiary)]" />
+          </div>
+          <h3 className="text-lg font-bold text-[var(--md-on-surface)]">
+            Platform Defaults
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-3">
+          <ConfigItem label="Currency" value="KES" />
+          <ConfigItem label="Tax Rate" value="16%" />
+          <ConfigItem label="Timezone" value="Africa/Nairobi" />
+        </div>
+      </div>
 
       {/* Create Plan Dialog */}
       <Dialog
@@ -199,7 +236,10 @@ export default function PlatformSettingsPage() {
               {...register("is_public")}
               className="h-4 w-4 rounded border-[var(--md-outline)] accent-[var(--md-primary)]"
             />
-            <label htmlFor="is_public" className="text-sm text-[var(--md-on-surface-variant)]">
+            <label
+              htmlFor="is_public"
+              className="text-sm text-[var(--md-on-surface-variant)]"
+            >
               Public (visible to all stores)
             </label>
           </div>
@@ -217,6 +257,41 @@ export default function PlatformSettingsPage() {
           </div>
         </form>
       </Dialog>
+
+      {/* Edit Plan Dialog */}
+      <Dialog
+        open={!!editingPlan}
+        onClose={() => setEditingPlan(null)}
+        title={`Edit ${editingPlan?.name ?? ""}`}
+      >
+        {editingPlan && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-variant)] p-4">
+              <p className="text-sm text-[var(--md-on-surface-variant)]">
+                Plan editing is coming soon. Currently you can create new plans.
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="secondary" onClick={() => setEditingPlan(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+    </div>
+  );
+}
+
+function ConfigItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--md-outline-variant)] bg-[var(--md-surface-variant)] p-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--md-on-surface-variant)]">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-semibold text-[var(--md-on-surface)]">
+        {value}
+      </p>
     </div>
   );
 }
