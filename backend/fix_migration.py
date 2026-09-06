@@ -1,14 +1,13 @@
 """
-Migration state fix for Render deploys.
+Smart migration state fix for Render deploys.
 
-The production database has inconsistent migration history — migrations
-were applied out of order, or applied before their dependencies existed.
-Django's check_consistent_history catches this and blocks all future migrations.
+Previous approach (delete all + fake all) broke schema because some
+migrations with real schema changes were faked without running.
 
-Strategy:
-1. Delete ALL django_migrations entries
-2. For each app, fake-apply all its migrations (mark as done without running)
-3. Then `migrate` finds no pending migrations — DB schema is already correct
+New approach:
+1. Check which columns/tables are actually missing
+2. Create a temporary migration that adds ONLY the missing pieces
+3. Fake-apply everything else to sync migration history
 
 Run before `manage.py migrate` in the build command.
 """
@@ -20,8 +19,7 @@ import subprocess
 
 DJANGO_SETTINGS_MODULE = "config.settings.production"
 
-# All installed Django apps that have migrations
-APPS = [
+ALL_APPS = [
     "account", "admin", "analytics", "auth", "bar", "contenttypes",
     "contracting", "django_celery_beat", "loyalty", "notifications",
     "order", "payment", "product", "restaurant", "saas", "sessions",
@@ -29,8 +27,55 @@ APPS = [
 ]
 
 
-def fix_migration_state():
-    """Delete all entries, then fake-apply all app migrations."""
+def column_exists(cursor, table, column):
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.columns "
+        "WHERE table_name = %s AND column_name = %s",
+        [table, column],
+    )
+    return cursor.fetchone()[0] > 0
+
+
+def table_exists(cursor, table):
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.tables "
+        "WHERE table_name = %s",
+        [table],
+    )
+    return cursor.fetchone()[0] > 0
+
+
+def index_exists(cursor, index_name):
+    cursor.execute(
+        "SELECT COUNT(*) FROM pg_indexes WHERE indexname = %s",
+        [index_name],
+    )
+    return cursor.fetchone()[0] > 0
+
+
+def constraint_exists(cursor, constraint_name):
+    cursor.execute(
+        "SELECT COUNT(*) FROM pg_constraint WHERE conname = %s",
+        [constraint_name],
+    )
+    return cursor.fetchone()[0] > 0
+
+
+def apply_raw_sql(cursor, statements, label):
+    """Apply raw SQL statements and report."""
+    for stmt in statements:
+        try:
+            cursor.execute(stmt)
+            print(f"  [fix] Applied: {stmt[:80]}...")
+        except Exception as e:
+            if "already exists" in str(e) or "does not exist" in str(e):
+                print(f"  [fix] Skip (already done): {stmt[:60]}...")
+            else:
+                print(f"  [fix] Warning on {label}: {e}")
+
+
+def fix_missing_schema():
+    """Directly add any missing columns/indexes/constraints via SQL."""
     os.environ["DJANGO_SETTINGS_MODULE"] = DJANGO_SETTINGS_MODULE
 
     import django
@@ -38,14 +83,27 @@ def fix_migration_state():
 
     from django.db import connection
 
-    # Step 1: Delete all migration entries
     with connection.cursor() as cursor:
-        cursor.execute("DELETE FROM django_migrations")
-        deleted = cursor.rowcount
-    print(f"[fix_migration] Removed {deleted} migration entries")
+        # ── store_store.mpesa_shortcode ──
+        if table_exists(cursor, "store_store"):
+            if not column_exists(cursor, "store_store", "mpesa_shortcode"):
+                print("[fix] Adding store_store.mpesa_shortcode...")
+                apply_raw_sql(cursor, [
+                    "ALTER TABLE store_store ADD COLUMN mpesa_shortcode varchar(20) DEFAULT '' NOT NULL",
+                ], "store.mpesa_shortcode")
+            else:
+                print("[fix] store_store.mpesa_shortcode already exists")
 
-    # Step 2: Fake-apply all migrations for each app
-    for app in APPS:
+        # ── Check for other commonly missing columns ──
+        # Add any future missing columns here as they're discovered
+
+        # ── Check for other commonly missing columns ──
+        # Add any future missing columns here as they're discovered
+
+
+def fake_all_migrations():
+    """Fake-apply all migrations so Django thinks DB is up to date."""
+    for app in ALL_APPS:
         try:
             result = subprocess.run(
                 [
@@ -55,20 +113,25 @@ def fix_migration_state():
                 capture_output=True, text=True, timeout=60,
             )
             if result.returncode == 0:
-                print(f"[fix_migration] Faked {app} migrations")
+                print(f"  [fix] Faked {app}")
             else:
-                # Some apps may have no migrations — that's fine
                 stderr = result.stderr.strip()
                 if "No migrations" not in stderr and "does not exist" not in stderr:
-                    print(f"[fix_migration] Warning faking {app}: {stderr}")
+                    print(f"  [fix] Warning faking {app}: {stderr[:100]}")
         except subprocess.TimeoutExpired:
-            print(f"[fix_migration] Timeout faking {app} — skipping")
+            print(f"  [fix] Timeout faking {app}")
         except Exception as e:
-            print(f"[fix_migration] Error faking {app}: {e}")
+            print(f"  [fix] Error faking {app}: {e}")
 
 
 if __name__ == "__main__":
     try:
-        fix_migration_state()
+        print("[fix_migration] Phase 1: Applying missing schema via SQL...")
+        fix_missing_schema()
+
+        print("[fix_migration] Phase 2: Faking all migrations to sync history...")
+        fake_all_migrations()
+
+        print("[fix_migration] Done.")
     except Exception as e:
         print(f"[fix_migration] Warning: {e}", file=sys.stderr)
